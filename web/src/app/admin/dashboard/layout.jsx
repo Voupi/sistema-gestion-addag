@@ -5,11 +5,13 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import { Loader2, LayoutDashboard, Users, LogOut, FileText, Settings } from 'lucide-react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 export default function AdminDashboardLayout({ children }) {
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState(null)
+    const pathname = usePathname()
 
     useEffect(() => {
         const checkAuth = async () => {
@@ -53,17 +55,29 @@ export default function AdminDashboardLayout({ children }) {
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-2">
-                    <Link href="/admin/dashboard" className="flex items-center gap-3 px-4 py-3 bg-blue-800 rounded-lg text-white font-medium shadow-sm border border-blue-700 transition-transform hover:scale-[1.02]">
+                    {/* ENLACE RESUMEN: Usamos comparación exacta (===) */}
+                    <Link href="/admin/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname === '/admin/dashboard'
+                            ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
+                            : 'hover:bg-blue-800/50 text-blue-100'
+                        }`}>
                         <LayoutDashboard className="w-5 h-5" />
                         <span>Resumen</span>
                     </Link>
-                    
-                    <Link href="/admin/dashboard/solicitudes" className="flex items-center gap-3 px-4 py-3 hover:bg-blue-800/50 rounded-lg text-blue-100 transition-colors">
+
+                    {/* ENLACE SOLICITUDES: Usamos includes */}
+                    <Link href="/admin/dashboard/solicitudes" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname.includes('/solicitudes')
+                            ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
+                            : 'hover:bg-blue-800/50 text-blue-100'
+                        }`}>
                         <FileText className="w-5 h-5" />
                         <span>Solicitudes</span>
                     </Link>
 
-                    <Link href="/admin/dashboard/miembros" className="flex items-center gap-3 px-4 py-3 hover:bg-blue-800/50 rounded-lg text-blue-100 transition-colors">
+                    {/* ENLACE MIEMBROS */}
+                    <Link href="/admin/dashboard/miembros" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname.includes('/miembros')
+                            ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
+                            : 'hover:bg-blue-800/50 text-blue-100'
+                        }`}>
                         <Users className="w-5 h-5" />
                         <span>Miembros</span>
                     </Link>
@@ -79,7 +93,7 @@ export default function AdminDashboardLayout({ children }) {
                             <p className="text-xs text-blue-300">Administrador</p>
                         </div>
                     </div>
-                    <button 
+                    <button
                         onClick={handleLogout}
                         className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"
                     >

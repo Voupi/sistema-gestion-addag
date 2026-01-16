@@ -78,7 +78,7 @@ export default function AdminLogin() {
                                     type="email"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent outline-none transition-all placeholder:text-gray-300 text-gray-900"
                                     placeholder="admin@addag.com"
                                     required
                                 />
@@ -88,12 +88,12 @@ export default function AdminLogin() {
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-gray-700">Contraseña</label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                                <Lock className="absolute left-3 top-3 w-5 h-5 placeholder:text-gray-300 text-gray-900" />
                                 <input
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent outline-none transition-all"
+                                    className="w-full pl-10 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-900 focus:border-transparent outline-none transition-all placeholder:text-gray-300 text-gray-900"
                                     placeholder="••••••••••••"
                                     required
                                 />

@@ -42,3 +42,5 @@ ADD COLUMN email TEXT;
 
 -- (Opcional) Si quieres asegurar que no se repitan correos, descomenta la siguiente línea:
 -- ALTER TABLE miembros ADD CONSTRAINT unique_email UNIQUE (email);
+ALTER TABLE miembros ADD COLUMN foto_url_final TEXT;
+-- Si foto_url_final es NULL, el sistema usará foto_url (la original)
