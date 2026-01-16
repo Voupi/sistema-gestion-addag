@@ -185,8 +185,8 @@ export default function SolicitudesPage() {
                             key={tab.id}
                             onClick={() => setFiltroEstado(tab.id)}
                             className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap ${filtroEstado === tab.id
-                                    ? 'bg-white text-blue-700 shadow-sm'
-                                    : 'text-gray-500 hover:text-gray-700'
+                                ? 'bg-white text-blue-700 shadow-sm'
+                                : 'text-gray-500 hover:text-gray-700'
                                 }`}
                         >
                             {tab.label}
@@ -262,7 +262,7 @@ export default function SolicitudesPage() {
                                                 {/* Botón Gestión (Siempre visible) */}
                                                 <button
                                                     onClick={() => setMiembroSeleccionado(m)}
-                                                    className="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 text-xs font-medium"
+                                                    className="px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-300 rounded hover:bg-blue-100 text-xs font-bold"
                                                 >
                                                     Editar
                                                 </button>

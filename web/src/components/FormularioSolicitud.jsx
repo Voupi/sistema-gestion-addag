@@ -32,7 +32,6 @@ const DEPARTAMENTOS_GUATEMALA = [
 
 export default function FormularioSolicitud() {
     const turnstileRef = useRef()
-
     // Estados del formulario
     const [formData, setFormData] = useState({
         email: '',
@@ -44,7 +43,7 @@ export default function FormularioSolicitud() {
         telefono: '',
         departamento: 'Guatemala'
     })
-    
+
     const [foto, setFoto] = useState(null)
     const [fotoPreview, setFotoPreview] = useState(null)
     const [turnstileToken, setTurnstileToken] = useState(null)
@@ -63,7 +62,7 @@ export default function FormularioSolicitud() {
 
     const handleChange = (e) => {
         const { name, value } = e.target
-        
+
         if (name === 'tipo_documento') {
             setFormData(prev => ({ ...prev, [name]: value, dpi_cui: '' }))
             setErrores(prev => ({ ...prev, dpi_cui: '' }))
@@ -116,7 +115,7 @@ export default function FormularioSolicitud() {
 
         if (!formData.nombres.trim()) nuevosErrores.nombres = 'Los nombres son requeridos'
         if (!formData.apellidos.trim()) nuevosErrores.apellidos = 'Los apellidos son requeridos'
-        
+
         if (!formData.dpi_cui.trim()) {
             nuevosErrores.dpi_cui = 'El número de documento es requerido'
         } else {
@@ -171,7 +170,7 @@ export default function FormularioSolicitud() {
                 .getPublicUrl(rutaArchivo)
 
             const rol = 'ATLETA'
-            
+
             const { error: insertError } = await supabase
                 .from('miembros')
                 .insert([{
@@ -200,7 +199,7 @@ export default function FormularioSolicitud() {
                     dpi: formData.dpi_cui,
                     telefono: formData.telefono
                 })
-                
+
                 if (!resultadoCorreo.success) {
                     alert("ERROR DE CORREO: " + resultadoCorreo.error) // Alerta visible
                     console.error("Error detallado:", resultadoCorreo.error)
@@ -222,7 +221,7 @@ export default function FormularioSolicitud() {
             setFotoPreview(null)
             setTurnstileToken(null)
             if (turnstileRef.current) turnstileRef.current.reset()
-            
+
             setShowModalExito(true) // <--- Abrir modal aquí
 
         } catch (error) {
@@ -236,7 +235,7 @@ export default function FormularioSolicitud() {
 
     return (
         <div className="w-full max-w-4xl mx-auto p-4 animate-in fade-in duration-500 font-sans relative">
-            
+
             {/* MODAL DE ÉXITO */}
             {showModalExito && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-300">
@@ -248,7 +247,7 @@ export default function FormularioSolicitud() {
                         <p className="text-gray-600 mb-8">
                             Hemos recibido tus datos correctamente. Te enviaremos una notificación a tu correo cuando tu carné esté listo.
                         </p>
-                        <button 
+                        <button
                             onClick={cerrarModalExito}
                             className="w-full py-3 px-6 bg-blue-700 hover:bg-blue-800 text-white font-bold rounded-lg transition-colors shadow-lg"
                         >
@@ -266,7 +265,7 @@ export default function FormularioSolicitud() {
                     <p className="text-gray-600 text-sm mb-4">
                         El Carné es únicamente para uso de parqueo de 4 horas sin costo.
                     </p>
-                    
+
                     <div className="text-sm text-gray-600 space-y-2 border-t border-gray-100 pt-4">
                         <p className="font-medium text-red-600">* Indica que la pregunta es obligatoria</p>
                         <ul className="list-disc list-inside ml-2 space-y-1">
@@ -280,7 +279,7 @@ export default function FormularioSolicitud() {
                     {/* Solo mostramos errores aquí, el éxito va en el modal */}
                     {mensajeError && (
                         <div className="p-4 rounded-lg flex items-center gap-3 border bg-red-50 text-red-800 border-red-200 animate-pulse">
-                            <AlertCircle className="w-5 h-5 flex-shrink-0"/>
+                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
                             <span className="font-medium">{mensajeError}</span>
                         </div>
                     )}
@@ -291,39 +290,39 @@ export default function FormularioSolicitud() {
                             <label className="text-base font-medium text-gray-800">Correo electrónico <span className="text-red-600">*</span></label>
                             <div className="relative group">
                                 <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400 group-focus-within:text-blue-600" />
-                                <input 
+                                <input
                                     type="email" name="email" value={formData.email} onChange={handleChange}
                                     className={`w-full pl-10 p-3 bg-white border-b-2 border-x-0 border-t-0 border-gray-200 focus:border-blue-600 focus:ring-0 outline-none transition-colors placeholder:text-gray-300 text-gray-900 ${errores.email ? 'border-red-500' : ''}`}
                                     placeholder="tu@correo.com"
                                 />
                             </div>
-                            {errores.email && <span className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {errores.email}</span>}
+                            {errores.email && <span className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.email}</span>}
                         </div>
 
                         <div className="space-y-2">
                             <label className="text-base font-medium text-gray-800">Número de Contacto <span className="text-red-600">*</span></label>
                             <div className="relative group">
                                 <Phone className="absolute left-3 top-3 w-5 h-5 text-gray-400 group-focus-within:text-blue-600" />
-                                <input 
+                                <input
                                     type="tel" name="telefono" value={formData.telefono} onChange={handleChange}
                                     placeholder="0000-0000"
                                     className={`w-full pl-10 p-3 bg-white border-b-2 border-x-0 border-t-0 border-gray-200 focus:border-blue-600 focus:ring-0 outline-none transition-colors placeholder:text-gray-300 text-gray-900 ${errores.telefono ? 'border-red-500' : ''}`}
                                 />
                             </div>
-                            {errores.telefono && <span className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3"/> {errores.telefono}</span>}
+                            {errores.telefono && <span className="text-xs text-red-500 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {errores.telefono}</span>}
                         </div>
                     </div>
 
                     {/* SECCIÓN 2: DATOS DEL ATLETA */}
                     <div className="bg-white p-6 rounded-lg border border-gray-200 shadow-sm space-y-6">
                         <h3 className="text-lg font-medium text-gray-800 border-b pb-2">Datos del Solicitante</h3>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <label className="text-base font-medium text-gray-700">Nombres <span className="text-red-600">*</span></label>
                                 <div className="relative">
                                     <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                                    <input 
+                                    <input
                                         type="text" name="nombres" value={formData.nombres} onChange={handleChange}
                                         className={`w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all placeholder:text-gray-300 text-gray-900 ${errores.nombres ? 'border-red-500' : ''}`}
                                         placeholder="Ej: Juan Pablo"
@@ -336,7 +335,7 @@ export default function FormularioSolicitud() {
                                 <label className="text-base font-medium text-gray-700">Apellidos <span className="text-red-600">*</span></label>
                                 <div className="relative">
                                     <User className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                                    <input 
+                                    <input
                                         type="text" name="apellidos" value={formData.apellidos} onChange={handleChange}
                                         className={`w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all placeholder:text-gray-300 text-gray-900 ${errores.apellidos ? 'border-red-500' : ''}`}
                                         placeholder="Ej: Pérez López"
@@ -352,7 +351,7 @@ export default function FormularioSolicitud() {
                                 <label className="text-sm font-semibold text-gray-700">Tipo de Documento</label>
                                 <div className="relative">
                                     <Globe className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                                    <select 
+                                    <select
                                         name="tipo_documento" value={formData.tipo_documento} onChange={handleChange}
                                         className="w-full pl-10 p-3 border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-900"
                                     >
@@ -368,7 +367,7 @@ export default function FormularioSolicitud() {
                                 </label>
                                 <div className="relative">
                                     <CreditCard className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                                    <input 
+                                    <input
                                         type="text" name="dpi_cui" value={formData.dpi_cui} onChange={handleChange}
                                         maxLength={formData.tipo_documento === 'DPI' ? 13 : 20}
                                         className={`w-full pl-10 p-3 bg-white border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-gray-300 text-gray-900 ${errores.dpi_cui ? 'border-red-500' : 'border-gray-300'}`}
@@ -380,8 +379,8 @@ export default function FormularioSolicitud() {
                                     <div className="bg-white p-3 rounded border border-gray-200 mt-2">
                                         <p className="text-xs text-gray-600 mb-2 font-medium">¿Dónde encuentro mi CUI?</p>
                                         <div className="relative w-full h-32 md:h-48 rounded overflow-hidden border">
-                                            <Image 
-                                                src="/guias/ejemplo ubicación de código único de identificación.png" 
+                                            <Image
+                                                src="/guias/ejemplo ubicación de código único de identificación.png"
                                                 alt="Ejemplo CUI RENAP"
                                                 fill
                                                 className="object-contain"
@@ -393,16 +392,18 @@ export default function FormularioSolicitud() {
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* Fecha Nacimiento LIMPIA */}
                             <div className="space-y-2">
                                 <label className="text-base font-medium text-gray-700">Fecha de Nacimiento <span className="text-red-600">*</span></label>
-                                <div className="relative">
-                                    <Calendar className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                                    <input 
-                                        type="date" name="fecha_nacimiento" value={formData.fecha_nacimiento} onChange={handleChange}
-                                        max={new Date().toISOString().split('T')[0]}
-                                        className={`w-full pl-10 p-3 bg-white border rounded-lg outline-none text-gray-900 ${errores.fecha_nacimiento ? 'border-red-500' : 'border-gray-300'}`}
-                                    />
-                                </div>
+                                <input
+                                    type="date"
+                                    name="fecha_nacimiento"
+                                    value={formData.fecha_nacimiento}
+                                    onChange={handleChange}
+                                    max={new Date().toISOString().split('T')[0]}
+                                    // Quitamos padding-left excesivo (pl-10) porque ya no hay icono a la izquierda
+                                    className={`w-full p-3 bg-white border rounded-lg outline-none text-gray-900 cursor-pointer ${errores.fecha_nacimiento ? 'border-red-500' : 'border-gray-300'}`}
+                                />
                                 {errores.fecha_nacimiento && <span className="text-xs text-red-500">{errores.fecha_nacimiento}</span>}
                             </div>
 
@@ -410,7 +411,7 @@ export default function FormularioSolicitud() {
                                 <label className="text-base font-medium text-gray-700">Departamento <span className="text-red-600">*</span></label>
                                 <div className="relative">
                                     <MapPin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                                    <select 
+                                    <select
                                         name="departamento" value={formData.departamento} onChange={handleChange}
                                         className="w-full pl-10 p-3 border border-gray-300 rounded-lg bg-white outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
                                     >
@@ -428,16 +429,16 @@ export default function FormularioSolicitud() {
                         <label className="text-lg font-medium text-gray-800">
                             Foto para su Carnet <span className="text-red-600">*</span>
                         </label>
-                        
+
                         <div className="space-y-4">
                             <p className="text-sm text-gray-600">
                                 Recuerde tomar foto solo del rostro para que salga bien su carnet.
                             </p>
-                            
+
                             <div className="flex flex-col items-center justify-center bg-gray-50 p-4 rounded-lg border border-gray-200">
                                 <div className="relative w-full max-w-md h-48 md:h-64">
-                                    <Image 
-                                        src="/guias/ejemplo de foto carné correcto y incorrecto.png" 
+                                    <Image
+                                        src="/guias/ejemplo de foto carné correcto y incorrecto.png"
                                         alt="Ejemplo Foto Correcta"
                                         fill
                                         className="object-contain"
@@ -450,13 +451,13 @@ export default function FormularioSolicitud() {
 
                             <div className="mt-4">
                                 <label className="text-base font-medium text-gray-700 mb-2 block">Adjuntar archivo</label>
-                                
-                                <div 
+
+                                <div
                                     className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all duration-300
-                                        ${isDragging 
-                                            ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-lg' 
-                                            : fotoPreview 
-                                                ? 'border-green-400 bg-green-50' 
+                                        ${isDragging
+                                            ? 'border-blue-500 bg-blue-50 scale-[1.02] shadow-lg'
+                                            : fotoPreview
+                                                ? 'border-green-400 bg-green-50'
                                                 : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50'
                                         }
                                         ${errores.foto ? 'border-red-500 bg-red-50' : ''}
@@ -468,18 +469,18 @@ export default function FormularioSolicitud() {
                                     {fotoPreview ? (
                                         <div className="flex flex-col items-center gap-3">
                                             <div className="relative h-40 w-32 shadow-md">
-                                                <Image 
-                                                    src={fotoPreview} 
-                                                    alt="Vista previa" 
-                                                    fill 
+                                                <Image
+                                                    src={fotoPreview}
+                                                    alt="Vista previa"
+                                                    fill
                                                     className="object-cover rounded-lg"
                                                     unoptimized
                                                 />
                                             </div>
                                             <p className="text-sm text-green-700 font-medium flex items-center gap-1">
-                                                <CheckCircle className="w-4 h-4"/> Foto cargada
+                                                <CheckCircle className="w-4 h-4" /> Foto cargada
                                             </p>
-                                            <button 
+                                            <button
                                                 type="button"
                                                 onClick={() => { setFoto(null); setFotoPreview(null); }}
                                                 className="text-sm text-red-600 hover:underline"
@@ -547,7 +548,7 @@ export default function FormularioSolicitud() {
                     </div>
                 </form>
             </div>
-            
+
             <div className="text-center mt-8 text-xs text-gray-500">
                 Sistema de Gestión ADDAG &copy; {new Date().getFullYear()}
             </div>
