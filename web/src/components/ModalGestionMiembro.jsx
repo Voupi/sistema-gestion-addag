@@ -4,10 +4,10 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import Cropper from 'react-easy-crop'
 import { rechazarSolicitud } from '@/actions/rechazarSolicitud'
-import {
-    X, RotateCw, CheckCircle, Loader2,
-    ChevronRight, ChevronLeft,
-    Scissors, Ban, Send, Lock
+import { 
+    X, RotateCw, CheckCircle, Loader2, 
+    ChevronRight, ChevronLeft, 
+    Scissors, Ban, Send, Lock 
 } from 'lucide-react'
 
 // Función auxiliar para recortar imagen
@@ -19,7 +19,6 @@ const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
 
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
-    const [imgBlobUrl, setImgBlobUrl] = useState(null)
 
     const maxSize = Math.max(image.width, image.height)
     const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2))
@@ -77,8 +76,11 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     const [rotation, setRotation] = useState(0)
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
     const [editandoFoto, setEditandoFoto] = useState(false)
+    
+    // --- ESTADO NUEVO PARA CORREGIR EL ERROR ---
+    const [imgBlobUrl, setImgBlobUrl] = useState(null) 
 
-    useEffect(() => { // Resetear formulario al cambiar de miembro
+    useEffect(() => {
         setFormData({ ...listaMiembros[currentIndex] })
         setRotation(0)
         setZoom(1)
@@ -86,28 +88,30 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
         setEditandoFoto(false)
         setModoRechazo(false)
     }, [currentIndex, listaMiembros])
-    // Descargar imagen como Blob para evitar CORS y pantalla negra
+
+    // --- NUEVO USE EFFECT PARA CARGAR IMAGEN COMO BLOB ---
     useEffect(() => {
         const prepararImagen = async () => {
             if (miembro?.foto_url) {
+                // Si ya tenemos foto final editada, usamos esa, si no, la original
+                const urlFuente = miembro.foto_url_final || miembro.foto_url
                 try {
-                    const res = await fetch(miembro.foto_url)
+                    const res = await fetch(urlFuente)
                     const blob = await res.blob()
                     const objectUrl = URL.createObjectURL(blob)
                     setImgBlobUrl(objectUrl)
                 } catch (err) {
                     console.error("Error cargando imagen local:", err)
-                    setImgBlobUrl(miembro.foto_url) // Fallback
+                    setImgBlobUrl(urlFuente) // Fallback
                 }
             }
         }
         prepararImagen()
-
-        // Limpieza de memoria
+        
         return () => {
             if (imgBlobUrl) URL.revokeObjectURL(imgBlobUrl)
         }
-    }, [miembro])
+    }, [miembro]) // Se ejecuta cuando cambia el miembro
 
     const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
         setCroppedAreaPixels(croppedAreaPixels)
@@ -129,11 +133,10 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                 await rechazarSolicitud({
                     email: formData.email,
                     nombre: formData.nombres,
-                    motivo: motivoRechazo,
-                    id: miembro.id
+                    motivo: motivoRechazo
                 })
                 await supabase.from('miembros').delete().eq('id', miembro.id)
-
+                
                 onUpdate()
                 if (currentIndex < listaMiembros.length - 1) handleNavegacion('next')
                 else onClose()
@@ -147,24 +150,25 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                 dpi_cui: formData.dpi_cui,
                 email: formData.email,
                 telefono: formData.telefono,
-                rol: formData.rol // <--- ¡AQUÍ ESTABA EL ERROR! AHORA SÍ GUARDA EL ROL
+                rol: formData.rol 
             }
 
             // Procesar Imagen
             if (editandoFoto && croppedAreaPixels) {
-                const blob = await getCroppedImg(miembro.foto_url, croppedAreaPixels, rotation)
+                // Usamos imgBlobUrl como fuente para el recorte final
+                const blob = await getCroppedImg(imgBlobUrl, croppedAreaPixels, rotation)
                 const fileName = `procesada_${miembro.dpi_cui}_${Date.now()}.jpg`
-
+                
                 const { error: uploadError } = await supabase.storage
                     .from('fotos-carnet')
                     .upload(fileName, blob, { upsert: true })
-
+                
                 if (uploadError) throw uploadError
 
                 const { data: urlData } = supabase.storage
                     .from('fotos-carnet')
                     .getPublicUrl(fileName)
-
+                
                 updates.foto_url_final = urlData.publicUrl
             }
 
@@ -180,13 +184,13 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
 
             onUpdate()
             setLoading(false)
-
+            
             if (accion === 'APROBAR' && currentIndex < listaMiembros.length - 1) {
                 handleNavegacion('next')
             } else if (accion === 'APROBAR') {
                 onClose()
             } else {
-                setEditandoFoto(false)
+                setEditandoFoto(false) 
                 alert("Cambios guardados correctamente.")
             }
 
@@ -202,20 +206,20 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden font-sans">
-
+                
                 {/* TOOLBAR */}
                 <div className="bg-gray-100 px-6 py-3 flex justify-between items-center border-b">
                     <div className="flex items-center gap-4">
                         <button onClick={() => handleNavegacion('prev')} disabled={currentIndex === 0}
                             className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors">
-                            <ChevronLeft className="w-6 h-6" />
+                            <ChevronLeft className="w-6 h-6"/>
                         </button>
                         <span className="text-sm font-medium text-gray-500">
                             Solicitud {currentIndex + 1} de {listaMiembros.length}
                         </span>
                         <button onClick={() => handleNavegacion('next')} disabled={currentIndex === listaMiembros.length - 1}
                             className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors">
-                            <ChevronRight className="w-6 h-6" />
+                            <ChevronRight className="w-6 h-6"/>
                         </button>
                     </div>
                     <button onClick={onClose} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
@@ -224,17 +228,17 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                 </div>
 
                 <div className="flex flex-col lg:flex-row h-full overflow-hidden">
-
+                    
                     {/* IZQUIERDA: EDITOR FOTO */}
                     <div className="w-full lg:w-3/5 bg-gray-900 relative flex flex-col">
                         <div className="flex-1 relative min-h-[400px]">
                             {editandoFoto ? (
                                 <Cropper
-                                    image={imgBlobUrl} // <--- USAR EL BLOB
+                                    image={imgBlobUrl} // <--- AQUI SE USA EL BLOB
                                     crop={crop}
                                     zoom={zoom}
                                     rotation={rotation}
-                                    aspect={139 / 166}
+                                    aspect={139 / 166} 
                                     onCropChange={setCrop}
                                     onCropComplete={onCropComplete}
                                     onZoomChange={setZoom}
@@ -242,9 +246,9 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                 />
                             ) : (
                                 <div className="w-full h-full flex items-center justify-center p-8">
-                                    <img
-                                        src={miembro.foto_url_final || imgBlobUrl} // <--- USAR EL BLOB
-                                        alt="Foto"
+                                    <img 
+                                        src={imgBlobUrl} // <--- AQUI SE USA EL BLOB (Si es null no muestra nada aun)
+                                        alt="Foto" 
                                         className="max-h-full max-w-full object-contain shadow-2xl rounded-lg"
                                         crossOrigin="anonymous"
                                     />
@@ -263,7 +267,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                                 onChange={(e) => setZoom(e.target.value)} className="accent-blue-500" />
                                         </div>
                                         <button onClick={() => setRotation(r => r + 90)} className="text-white hover:text-blue-400">
-                                            <RotateCw className="w-6 h-6" />
+                                            <RotateCw className="w-6 h-6"/>
                                         </button>
                                     </div>
                                     <div className="flex gap-2">
@@ -287,15 +291,15 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
 
                     {/* DERECHA: DATOS (DISEÑO 2 COLUMNAS) */}
                     <div className="w-full lg:w-2/5 p-6 md:p-8 overflow-y-auto bg-white flex flex-col">
-
+                        
                         {modoRechazo ? (
                             <div className="flex-1 flex flex-col animate-in slide-in-from-right-10">
                                 <h3 className="text-xl font-bold text-red-700 mb-4 flex items-center gap-2">
-                                    <Ban className="w-6 h-6" /> Rechazar Solicitud
+                                    <Ban className="w-6 h-6"/> Rechazar Solicitud
                                 </h3>
                                 <div className="flex-1 space-y-4">
                                     <p className="text-sm text-gray-600">Se notificará al usuario y se eliminará el registro.</p>
-                                    <textarea
+                                    <textarea 
                                         value={motivoRechazo}
                                         onChange={(e) => setMotivoRechazo(e.target.value)}
                                         className="w-full h-40 p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-gray-800 text-sm"
@@ -305,7 +309,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                 <div className="mt-6 flex gap-3">
                                     <button onClick={() => setModoRechazo(false)} className="flex-1 py-3 text-gray-600 font-medium">Cancelar</button>
                                     <button onClick={() => handleSave('RECHAZAR')} disabled={loading} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 flex justify-center items-center gap-2">
-                                        {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send className="w-4 h-4" />} Enviar Rechazo
+                                        {loading ? <Loader2 className="animate-spin w-4 h-4"/> : <Send className="w-4 h-4"/>} Enviar Rechazo
                                     </button>
                                 </div>
                             </div>
@@ -323,17 +327,17 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Documento ({miembro.tipo_documento})</label>
-                                            <input
-                                                value={formData.dpi_cui}
-                                                onChange={e => setFormData({ ...formData, dpi_cui: e.target.value })}
-                                                className="input-field font-mono bg-gray-50"
+                                            <input 
+                                                value={formData.dpi_cui} 
+                                                onChange={e => setFormData({...formData, dpi_cui: e.target.value})} 
+                                                className="input-field font-mono bg-gray-50" 
                                             />
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Rol / Función</label>
-                                            <select
-                                                value={formData.rol || 'ATLETA'} // Default para evitar errores visuales
-                                                onChange={e => setFormData({ ...formData, rol: e.target.value })}
+                                            <select 
+                                                value={formData.rol || 'ATLETA'} 
+                                                onChange={e => setFormData({...formData, rol: e.target.value})}
                                                 className="input-field bg-white cursor-pointer"
                                             >
                                                 <option value="ATLETA">ATLETA</option>
@@ -349,11 +353,11 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nombres</label>
-                                            <input value={formData.nombres} onChange={e => setFormData({ ...formData, nombres: e.target.value })} className="input-field" />
+                                            <input value={formData.nombres} onChange={e => setFormData({...formData, nombres: e.target.value})} className="input-field" />
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Apellidos</label>
-                                            <input value={formData.apellidos} onChange={e => setFormData({ ...formData, apellidos: e.target.value })} className="input-field" />
+                                            <input value={formData.apellidos} onChange={e => setFormData({...formData, apellidos: e.target.value})} className="input-field" />
                                         </div>
                                     </div>
 
@@ -362,20 +366,17 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                         <div className="space-y-1 relative">
                                             <div className="flex justify-between">
                                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Correo</label>
-                                                {/* Icono de candado decorativo, aunque el campo es editable por si hay typos */}
-                                                <Lock className="w-3 h-3 text-gray-300" />
+                                                <Lock className="w-3 h-3 text-gray-300" /> 
                                             </div>
-                                            <input
-                                                value={formData.email || ''}
-                                                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                                className="input-field"
-                                            // Si quieres bloquearlo de verdad, descomenta la siguiente linea:
-                                            // disabled={true} 
+                                            <input 
+                                                value={formData.email || ''} 
+                                                onChange={e => setFormData({...formData, email: e.target.value})} 
+                                                className="input-field" 
                                             />
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Teléfono</label>
-                                            <input value={formData.telefono || ''} onChange={e => setFormData({ ...formData, telefono: e.target.value })} className="input-field" />
+                                            <input value={formData.telefono || ''} onChange={e => setFormData({...formData, telefono: e.target.value})} className="input-field" />
                                         </div>
                                     </div>
                                 </div>
@@ -392,7 +393,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
 
                                     {miembro.estado !== 'APROBADO' && miembro.estado !== 'IMPRESO' && (
                                         <button onClick={() => handleSave('APROBAR')} className="w-full flex items-center justify-center gap-2 py-4 bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-800 shadow-lg hover:shadow-blue-500/30 transition-all">
-                                            {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
+                                            {loading ? <Loader2 className="animate-spin w-5 h-5"/> : <CheckCircle className="w-5 h-5" />}
                                             APROBAR Y SIGUIENTE
                                         </button>
                                     )}
@@ -402,7 +403,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                     </div>
                 </div>
             </div>
-
+            
             <style jsx>{`
                 .input-field {
                     width: 100%;
