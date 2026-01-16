@@ -50,3 +50,15 @@ ALTER TYPE rol_atleta ADD VALUE 'DIRECTIVO';
 ALTER TYPE rol_atleta ADD VALUE 'COLABORADOR';
 ALTER TYPE rol_atleta ADD VALUE 'ARBITRO'; 
 -- (Si decides borrar DEPORTISTA es más complejo, mejor déjalo ahí y no lo uses).
+
+-- Permitir que los usuarios logueados (Administradores) puedan BORRAR registros
+CREATE POLICY "Admin puede borrar miembros"
+ON miembros
+FOR DELETE
+USING ( auth.role() = 'authenticated' );
+
+-- Asegurarnos que también puedan actualizar todo (por si acaso)
+CREATE POLICY "Admin puede actualizar todo"
+ON miembros
+FOR UPDATE
+USING ( auth.role() = 'authenticated' );

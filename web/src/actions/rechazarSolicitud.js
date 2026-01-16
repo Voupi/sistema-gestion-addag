@@ -44,7 +44,7 @@ export async function rechazarSolicitud({ email, nombre, motivo }) {
             <p>Por favor, ingresa nuevamente al formulario y envía una nueva solicitud corrigiendo este punto.</p>
             
             <p style="text-align: center; margin-top: 24px;">
-              <a href="https://addag-web.vercel.app" style="background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+              <a href="https://sistema-gestion-addag.vercel.app/" style="background-color: #dc2626; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold;">
                 Llenar Formulario Nuevamente
               </a>
             </p>
