@@ -13,13 +13,27 @@ import {
 // Función auxiliar para recortar imagen
 const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
     const image = new Image()
-    image.src = imageSrc + '?t=' + new Date().getTime() // Evitar caché CORS
-    image.crossOrigin = 'anonymous'
-    await new Promise((resolve) => { image.onload = resolve })
+    
+    // CORRECCIÓN: Solo usar trucos CORS si NO es un blob local
+    const isLocalBlob = imageSrc.startsWith('blob:')
+    
+    if (isLocalBlob) {
+        image.src = imageSrc
+        // No necesitamos crossOrigin para blobs locales
+    } else {
+        image.src = imageSrc + '?t=' + new Date().getTime()
+        image.crossOrigin = 'anonymous'
+    }
+
+    await new Promise((resolve, reject) => { 
+        image.onload = resolve
+        image.onerror = (e) => reject(new Error('Error al cargar la imagen para recorte'))
+    })
 
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
 
+    // ... (El resto de la función sigue igual desde aquí: const maxSize ...)
     const maxSize = Math.max(image.width, image.height)
     const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2))
 
