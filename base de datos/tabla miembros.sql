@@ -49,6 +49,7 @@ ALTER TYPE rol_atleta ADD VALUE 'ENTRENADOR';
 ALTER TYPE rol_atleta ADD VALUE 'DIRECTIVO';
 ALTER TYPE rol_atleta ADD VALUE 'COLABORADOR';
 ALTER TYPE rol_atleta ADD VALUE 'ARBITRO'; 
+ALTER TYPE estado_solicitud ADD VALUE 'REIMPRESION';
 -- (Si decides borrar DEPORTISTA es más complejo, mejor déjalo ahí y no lo uses).
 
 -- Permitir que los usuarios logueados (Administradores) puedan BORRAR registros

@@ -11,12 +11,12 @@ export default function PrintPage() {
 
     useEffect(() => {
         const cargarDatos = async () => {
-            // Cargar solo los aprobados e impresos
+            // Cargar SOLO la cola activa (Aprobados nuevos o Reimpresiones)
             const { data } = await supabase
                 .from('miembros')
                 .select('*')
-                .in('estado', ['APROBADO', 'IMPRESO']) // Filtramos
-                .order('apellidos') // Orden alfabético para imprimir ordenado
+                .in('estado', ['APROBADO', 'REIMPRESION'])
+                .order('apellidos')
 
             setMiembros(data || [])
             setLoading(false)
