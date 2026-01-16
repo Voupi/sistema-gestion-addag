@@ -61,17 +61,6 @@ export default function FormularioSolicitud() {
     const validarPasaporte = (pasaporte) => /^[A-Za-z0-9]{3,20}$/.test(pasaporte)
     const validarEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
 
-    const calcularRol = (fechaNacimiento) => {
-        const hoy = new Date()
-        const nacimiento = new Date(fechaNacimiento)
-        let edad = hoy.getFullYear() - nacimiento.getFullYear()
-        const mes = hoy.getMonth() - nacimiento.getMonth()
-        if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
-            edad--
-        }
-        return edad < 18 ? 'ATLETA' : 'DEPORTISTA'
-    }
-
     const handleChange = (e) => {
         const { name, value } = e.target
         
@@ -181,7 +170,7 @@ export default function FormularioSolicitud() {
                 .from('fotos-carnet')
                 .getPublicUrl(rutaArchivo)
 
-            const rol = calcularRol(formData.fecha_nacimiento)
+            const rol = 'ATLETA'
             
             const { error: insertError } = await supabase
                 .from('miembros')

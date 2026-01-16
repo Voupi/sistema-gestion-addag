@@ -12,9 +12,12 @@ import {
     RefreshCw,
     UserCheck,
     UserX,
-    Printer
+    Printer,
+    CheckCircle
 } from 'lucide-react'
 import ModalGestionMiembro from '@/components/ModalGestionMiembro'
+import { notificarImpresion } from '@/actions/notificarImpresion'
+import Link from 'next/link'
 
 // Utilidad para colores de estado
 const getStatusColor = (status) => {
@@ -33,6 +36,51 @@ export default function SolicitudesPage() {
     const [filtroEstado, setFiltroEstado] = useState('TODOS')
     const [busqueda, setBusqueda] = useState('')
     const [miembroSeleccionado, setMiembroSeleccionado] = useState(null)
+    const [showConfirmPrint, setShowConfirmPrint] = useState(false)
+    const [isPrinting, setIsPrinting] = useState(false)
+
+    // Función para manejar el clic en imprimir
+    const handlePrintClick = () => {
+        // 1. Abrir PDF en nueva pestaña
+        window.open('/admin/print', '_blank')
+        // 2. Mostrar modal de confirmación aquí
+        setShowConfirmPrint(true)
+    }
+
+    const handleConfirmarImpresion = async () => {
+        setIsPrinting(true)
+        try {
+            // Obtener los IDs de los aprobados/impresos actuales
+            const { data: listos } = await supabase
+                .from('miembros')
+                .select('id, email, nombres, apellidos')
+                .in('estado', ['APROBADO']) // Solo notificamos a los que estaban pendientes de imprimir
+
+            // Actualizar DB
+            await supabase
+                .from('miembros')
+                .update({ estado: 'IMPRESO' })
+                .in('estado', ['APROBADO'])
+
+            // Enviar Correos (en segundo plano para no trabar)
+            // Usamos Promise.allSettled para que si falla uno no pare los demás
+            const notificaciones = listos.map(m =>
+                notificarImpresion({ email: m.email, nombre: m.nombres })
+            )
+
+            await Promise.allSettled(notificaciones)
+
+            alert('Proceso finalizado. Se enviaron las notificaciones.')
+            setShowConfirmPrint(false)
+            fetchMiembros() // Refrescar tabla
+
+        } catch (error) {
+            console.error(error)
+            alert('Hubo un error al actualizar estados')
+        } finally {
+            setIsPrinting(false)
+        }
+    }
 
     // Cargar datos al inicio
     const fetchMiembros = async () => {
@@ -81,12 +129,51 @@ export default function SolicitudesPage() {
                     <h1 className="text-2xl font-bold text-gray-900">Solicitudes y Miembros</h1>
                     <p className="text-gray-500 text-sm">Gestiona el padrón de atletas y deportistas</p>
                 </div>
+                {/* BOTÓN IMPRIMIR */}
+                <button
+                    onClick={handlePrintClick}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 shadow-sm"
+                >
+                    <Printer className="w-4 h-4" /> Imprimir Lote
+                </button>
+
+                {/* MODAL DE CONFIRMACIÓN DE IMPRESIÓN */}
+                {showConfirmPrint && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                        <div className="bg-white p-8 rounded-xl max-w-md text-center shadow-2xl">
+                            <Printer className="w-16 h-16 text-blue-600 mx-auto mb-4" />
+                            <h3 className="text-xl font-bold text-gray-900 mb-2">¿Se imprimió correctamente?</h3>
+                            <p className="text-gray-600 mb-6 text-sm">
+                                Si el PDF se generó bien y ya mandaste a imprimir, confirma aquí para
+                                <strong> marcar como IMPRESO</strong> y <strong>notificar por correo</strong> a los usuarios.
+                            </p>
+                            <div className="flex flex-col gap-3">
+                                <button
+                                    onClick={handleConfirmarImpresion}
+                                    disabled={isPrinting}
+                                    className="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg flex justify-center items-center gap-2"
+                                >
+                                    {isPrinting ? <Loader2 className="animate-spin" /> : <CheckCircle className="w-5 h-5" />}
+                                    Sí, Confirmar y Notificar
+                                </button>
+                                <button
+                                    onClick={() => setShowConfirmPrint(false)}
+                                    disabled={isPrinting}
+                                    className="w-full py-3 text-gray-500 hover:bg-gray-100 rounded-lg"
+                                >
+                                    No, Cancelar (Hubo un error)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
                 <button
                     onClick={fetchMiembros}
                     className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                     <RefreshCw className="w-4 h-4" /> Actualizar
                 </button>
+
             </div>
 
             {/* Barra de Herramientas */}
@@ -217,7 +304,7 @@ export default function SolicitudesPage() {
                 </div>
             </div>
             {miembroSeleccionado && (
-                <ModalGestionMiembro 
+                <ModalGestionMiembro
                     miembroInicial={miembroSeleccionado} // <-- Ojo: cambió el nombre de la prop
                     listaMiembros={miembrosFiltrados}    // <-- Nuevo: Pasamos la lista actual
                     onClose={() => setMiembroSeleccionado(null)}

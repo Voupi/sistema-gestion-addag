@@ -44,3 +44,9 @@ ADD COLUMN email TEXT;
 -- ALTER TABLE miembros ADD CONSTRAINT unique_email UNIQUE (email);
 ALTER TABLE miembros ADD COLUMN foto_url_final TEXT;
 -- Si foto_url_final es NULL, el sistema usará foto_url (la original)
+-- Agregar nuevos roles al tipo enum
+ALTER TYPE rol_atleta ADD VALUE 'ENTRENADOR';
+ALTER TYPE rol_atleta ADD VALUE 'DIRECTIVO';
+ALTER TYPE rol_atleta ADD VALUE 'COLABORADOR';
+ALTER TYPE rol_atleta ADD VALUE 'ARBITRO'; 
+-- (Si decides borrar DEPORTISTA es más complejo, mejor déjalo ahí y no lo uses).
