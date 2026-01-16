@@ -73,7 +73,8 @@ export default function AdminDashboardLayout({ children }) {
                         <span>Solicitudes</span>
                     </Link>
 
-                    {/* ENLACE MIEMBROS */}
+                    {/* ENLACE MIEMBROS 
+                    COMENTADO POR AHORA
                     <Link href="/admin/dashboard/miembros" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname.includes('/miembros')
                             ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
                             : 'hover:bg-blue-800/50 text-blue-100'
@@ -81,6 +82,7 @@ export default function AdminDashboardLayout({ children }) {
                         <Users className="w-5 h-5" />
                         <span>Miembros</span>
                     </Link>
+                    */}
                 </nav>
 
                 <div className="p-4 border-t border-blue-800">
