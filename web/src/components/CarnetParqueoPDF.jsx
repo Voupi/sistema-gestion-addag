@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
     selloGuide: {
         width: '30mm', // 3 cm exactos
         height: '30mm',
-        borderRadius: '50%',
+        borderRadius: '15mm',
         border: `0.5pt dashed ${c.textLight}`, // Guía visual sutil
         alignItems: 'center',
         justifyContent: 'center',
@@ -217,8 +217,8 @@ const CarnetFrente = ({ miembro }) => (
                 <Image src="/assets/logo-oficial-new02.png" style={{ width: 15, height: 15, marginRight: 3 }} />
                 <Text style={styles.headerText}>ADDAG</Text>
             </View>
-            <Text style={styles.headerText}>&gt;&gt; USO EXCLUSIVO DE PARQUEO &lt;&lt;</Text>
-            <Text style={styles.headerText}>VENCE: 2026</Text>
+            <Text style={styles.headerText}>Carnet de Parqueo</Text>
+            <Text style={styles.headerText}>VENCIMIENTO: 31/DIC/2026</Text>
         </View>
 
         {/* Cuerpo */}
@@ -292,12 +292,12 @@ const CarnetReverso = () => (
                     <Text style={{ fontSize: 6 }}>Administración</Text>
                 </View>
 
-                <View style={styles.selloBox}>
-                    {/* El Círculo Guía de 3cm */}
+                {/*<View style={styles.selloBox}>
+                    {/* El Círculo Guía de 3cm /}
                     <View style={styles.selloGuide}>
                         <Text style={styles.selloText}>SELLO 3CM</Text>
                     </View>
-                </View>
+                </View>*/}
             </View>
 
             <Text style={styles.webFooter}>www.ajedrezguate.org</Text>

@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     }
 });
 
-const CarnetFrontal = ({ miembro }) => (
+const CarnetFrontal = ({ miembro, baseUrl }) => (
     <View style={styles.cardContainer}>
         <View style={styles.frenteContainer}>
             {/* Columna Datos */}
@@ -124,14 +124,14 @@ const CarnetFrontal = ({ miembro }) => (
     </View>
 );
 
-const CarnetReverso = () => (
+const CarnetReverso = ({baseUrl}) => (
     <View style={styles.cardContainer}>
         {/* Asegúrate de tener esta imagen en public/assets */}
-        <Image src="/assets/portada_carnet_tamaño_carne.png" style={styles.reversoImage} />
+        <Image src={`${baseUrl}/assets/portada_carnet_tamaño_carne.png`} style={styles.reversoImage} />
     </View>
 );
 
-export const CarnetDocument = ({ miembros }) => {
+export const CarnetDocument = ({ miembros, baseUrl }) => {
     // Dividir en grupos de 8 (2 columnas x 4 filas = 8 por página carta)
     const itemsPorPagina = 8;
     const paginas = [];
@@ -147,7 +147,7 @@ export const CarnetDocument = ({ miembros }) => {
                     {/* PÁGINA IMPAR: FRENTES */}
                     <Page size="LETTER" style={styles.page}>
                         {grupo.map((miembro) => (
-                            <CarnetFrontal key={miembro.id} miembro={miembro} />
+                            <CarnetFrontal key={miembro.id} miembro={miembro} baseUrl={baseUrl}/>
                         ))}
                     </Page>
 
@@ -156,7 +156,7 @@ export const CarnetDocument = ({ miembros }) => {
                     <Page size="LETTER" style={styles.page}>
                         {grupo.map((_, i) => (
                             // Renderizamos tantos reversos como frentes haya en esta página
-                            <CarnetReverso key={i} />
+                            <CarnetReverso key={i} baseUrl={baseUrl}/>
                         ))}
                     </Page>
                 </React.Fragment>

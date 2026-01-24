@@ -120,7 +120,7 @@ export default function SolicitudesPage() {
 
             // Notificar
             const notificaciones = listos.map(m =>
-                notificarImpresion({ email: m.email, nombre: m.nombres })
+                notificarImpresion({ email: m.email, nombre: m.nombres, tipo: 'GENERAL' })
             )
             await Promise.allSettled(notificaciones)
 
