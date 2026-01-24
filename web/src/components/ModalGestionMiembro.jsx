@@ -4,95 +4,70 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import Cropper from 'react-easy-crop'
 import { rechazarSolicitud } from '@/actions/rechazarSolicitud'
-import {
-    X, RotateCw, CheckCircle, Loader2,
-    ChevronRight, ChevronLeft,
-    Scissors, Ban, Send, Lock
+import { 
+    X, RotateCw, CheckCircle, Loader2, 
+    ChevronRight, ChevronLeft, 
+    Scissors, Ban, Send, Lock 
 } from 'lucide-react'
 
-// Función auxiliar para recortar imagen
 const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
     const image = new Image()
-
-    // CORRECCIÓN: Solo usar trucos CORS si NO es un blob local
     const isLocalBlob = imageSrc.startsWith('blob:')
-
     if (isLocalBlob) {
         image.src = imageSrc
-        // No necesitamos crossOrigin para blobs locales
     } else {
         image.src = imageSrc + '?t=' + new Date().getTime()
         image.crossOrigin = 'anonymous'
     }
-
-    await new Promise((resolve, reject) => {
-        image.onload = resolve
-        image.onerror = (e) => reject(new Error('Error al cargar la imagen para recorte'))
-    })
-
+    await new Promise((resolve) => { image.onload = resolve })
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
-
-    // ... (El resto de la función sigue igual desde aquí: const maxSize ...)
     const maxSize = Math.max(image.width, image.height)
     const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2))
-
     canvas.width = safeArea
     canvas.height = safeArea
-
     ctx.translate(safeArea / 2, safeArea / 2)
     ctx.rotate((rotation * Math.PI) / 180)
     ctx.translate(-safeArea / 2, -safeArea / 2)
-
-    ctx.drawImage(
-        image,
-        safeArea / 2 - image.width * 0.5,
-        safeArea / 2 - image.height * 0.5
-    )
-
+    ctx.drawImage(image, safeArea / 2 - image.width * 0.5, safeArea / 2 - image.height * 0.5)
     const data = ctx.getImageData(
         safeArea / 2 - image.width * 0.5 + pixelCrop.x,
         safeArea / 2 - image.height * 0.5 + pixelCrop.y,
         pixelCrop.width,
         pixelCrop.height
     )
-
     canvas.width = pixelCrop.width
     canvas.height = pixelCrop.height
-
     ctx.putImageData(data, 0, 0)
-
     return new Promise((resolve) => {
-        canvas.toBlob((blob) => {
-            resolve(blob)
-        }, 'image/jpeg', 0.9)
+        canvas.toBlob((blob) => { resolve(blob) }, 'image/jpeg', 0.9)
     })
 }
 
-export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onClose, onUpdate }) {
+export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onClose, onUpdate, modo = 'MIEMBRO' }) {
     const [currentIndex, setCurrentIndex] = useState(0)
     const miembro = listaMiembros[currentIndex]
+
+    // Configuración dinámica según el modo
+    const DB_TABLE = modo === 'PARQUEO' ? 'parqueos' : 'miembros'
+    const RPC_APROBAR = modo === 'PARQUEO' ? 'aprobar_parqueo' : 'aprobar_miembro'
+    const ID_PARAM = modo === 'PARQUEO' ? 'parqueo_id' : 'miembro_id'
 
     useEffect(() => {
         const idx = listaMiembros.findIndex(m => m.id === miembroInicial.id)
         if (idx !== -1) setCurrentIndex(idx)
     }, [miembroInicial, listaMiembros])
 
-    // Estados
     const [formData, setFormData] = useState({ ...miembro })
     const [loading, setLoading] = useState(false)
     const [modoRechazo, setModoRechazo] = useState(false)
-    const [motivoRechazo, setMotivoRechazo] = useState('La fotografía no cumple con los requisitos (oscura, borrosa o no es tipo pasaporte).')
-
-    // Estados Imagen
+    const [motivoRechazo, setMotivoRechazo] = useState('La fotografía no cumple con los requisitos.')
     const [crop, setCrop] = useState({ x: 0, y: 0 })
     const [zoom, setZoom] = useState(1)
     const [rotation, setRotation] = useState(0)
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
     const [editandoFoto, setEditandoFoto] = useState(false)
-
-    // --- ESTADO NUEVO PARA CORREGIR EL ERROR ---
-    const [imgBlobUrl, setImgBlobUrl] = useState(null)
+    const [imgBlobUrl, setImgBlobUrl] = useState(null) 
 
     useEffect(() => {
         setFormData({ ...listaMiembros[currentIndex] })
@@ -103,11 +78,9 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
         setModoRechazo(false)
     }, [currentIndex, listaMiembros])
 
-    // --- NUEVO USE EFFECT PARA CARGAR IMAGEN COMO BLOB ---
     useEffect(() => {
         const prepararImagen = async () => {
             if (miembro?.foto_url) {
-                // Si ya tenemos foto final editada, usamos esa, si no, la original
                 const urlFuente = miembro.foto_url_final || miembro.foto_url
                 try {
                     const res = await fetch(urlFuente)
@@ -115,17 +88,13 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                     const objectUrl = URL.createObjectURL(blob)
                     setImgBlobUrl(objectUrl)
                 } catch (err) {
-                    console.error("Error cargando imagen local:", err)
-                    setImgBlobUrl(urlFuente) // Fallback
+                    setImgBlobUrl(urlFuente)
                 }
             }
         }
         prepararImagen()
-
-        return () => {
-            if (imgBlobUrl) URL.revokeObjectURL(imgBlobUrl)
-        }
-    }, [miembro]) // Se ejecuta cuando cambia el miembro
+        return () => { if (imgBlobUrl) URL.revokeObjectURL(imgBlobUrl) }
+    }, [miembro])
 
     const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
         setCroppedAreaPixels(croppedAreaPixels)
@@ -142,82 +111,74 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     const handleSave = async (accion) => {
         setLoading(true)
         try {
-            // --- RECHAZAR ---
             if (accion === 'RECHAZAR') {
                 await rechazarSolicitud({
                     email: formData.email,
                     nombre: formData.nombres,
                     motivo: motivoRechazo
                 })
-                await supabase.from('miembros').delete().eq('id', miembro.id)
-
+                await supabase.from(DB_TABLE).delete().eq('id', miembro.id) // Usa tabla dinámica
                 onUpdate()
                 if (currentIndex < listaMiembros.length - 1) handleNavegacion('next')
                 else onClose()
                 return
             }
 
-            // --- GUARDAR / APROBAR ---
             let updates = {
                 nombres: formData.nombres,
                 apellidos: formData.apellidos,
                 dpi_cui: formData.dpi_cui,
                 email: formData.email,
-                telefono: formData.telefono,
-                rol: formData.rol
+                telefono: formData.telefono
+            }
+            
+            // Solo agregar ROL si es MIEMBRO
+            if (modo === 'MIEMBRO') {
+                updates.rol = formData.rol
             }
 
-            // Procesar Imagen
             if (editandoFoto && croppedAreaPixels) {
-                // Usamos imgBlobUrl como fuente para el recorte final
                 const blob = await getCroppedImg(imgBlobUrl, croppedAreaPixels, rotation)
-                const fileName = `procesada_${miembro.dpi_cui}_${Date.now()}.jpg`
-
+                const prefix = modo === 'PARQUEO' ? 'P_' : ''
+                const fileName = `${prefix}procesada_${miembro.dpi_cui}_${Date.now()}.jpg`
+                
                 const { error: uploadError } = await supabase.storage
                     .from('fotos-carnet')
                     .upload(fileName, blob, { upsert: true })
-
+                
                 if (uploadError) throw uploadError
-
-                const { data: urlData } = supabase.storage
-                    .from('fotos-carnet')
-                    .getPublicUrl(fileName)
-
+                const { data: urlData } = supabase.storage.from('fotos-carnet').getPublicUrl(fileName)
                 updates.foto_url_final = urlData.publicUrl
             }
 
-            // Update DB
-            await supabase.from('miembros').update(updates).eq('id', miembro.id)
+            // Update Dinámico
+            await supabase.from(DB_TABLE).update(updates).eq('id', miembro.id)
 
-            // Aprobar
             if (accion === 'APROBAR') {
                 if (miembro.estado !== 'APROBADO' && miembro.estado !== 'IMPRESO') {
-                    await supabase.rpc('aprobar_miembro', { miembro_id: miembro.id })
+                    // RPC Dinámico
+                    const params = {}
+                    params[ID_PARAM] = miembro.id
+                    await supabase.rpc(RPC_APROBAR, params)
                 }
             }
 
             onUpdate()
             setLoading(false)
-
+            
             if (accion === 'APROBAR' && currentIndex < listaMiembros.length - 1) {
                 handleNavegacion('next')
             } else if (accion === 'APROBAR') {
                 onClose()
             } else {
-                setEditandoFoto(false)
+                setEditandoFoto(false) 
                 alert("Cambios guardados correctamente.")
             }
 
         } catch (error) {
             console.error(error)
-
-            // Detección específica de DPI Duplicado
-            if (error.code === '23505' || (error.message && error.message.includes('duplicate key'))) {
-                alert('🛑 ERROR: No se puede guardar.\n\nEl DPI/CUI ingresado ya pertenece a otro usuario registrado en el sistema.')
-            } else {
-                alert('Ocurrió un error inesperado: ' + error.message)
-            }
-
+            if (error.code === '23505') alert('🛑 ERROR: Documento duplicado.')
+            else alert('Error: ' + error.message)
             setLoading(false)
         }
     }
@@ -227,195 +188,109 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden font-sans">
-
-                {/* TOOLBAR */}
                 <div className="bg-gray-100 px-6 py-3 flex justify-between items-center border-b">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => handleNavegacion('prev')} disabled={currentIndex === 0}
-                            className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors">
-                            <ChevronLeft className="w-6 h-6" />
-                        </button>
-                        <span className="text-sm font-medium text-gray-500">
-                            Solicitud {currentIndex + 1} de {listaMiembros.length}
-                        </span>
-                        <button onClick={() => handleNavegacion('next')} disabled={currentIndex === listaMiembros.length - 1}
-                            className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors">
-                            <ChevronRight className="w-6 h-6" />
-                        </button>
+                        <button onClick={() => handleNavegacion('prev')} disabled={currentIndex === 0} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors"><ChevronLeft className="w-6 h-6"/></button>
+                        <span className="text-sm font-medium text-gray-500">Solicitud {currentIndex + 1} de {listaMiembros.length} ({modo})</span>
+                        <button onClick={() => handleNavegacion('next')} disabled={currentIndex === listaMiembros.length - 1} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors"><ChevronRight className="w-6 h-6"/></button>
                     </div>
-                    <button onClick={onClose} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors">
-                        <X className="w-6 h-6" />
-                    </button>
+                    <button onClick={onClose} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"><X className="w-6 h-6" /></button>
                 </div>
 
                 <div className="flex flex-col lg:flex-row h-full overflow-hidden">
-
-                    {/* IZQUIERDA: EDITOR FOTO */}
                     <div className="w-full lg:w-3/5 bg-gray-900 relative flex flex-col">
-                        <div className="flex-1 relative min-h-[400px]">
+                        <div className="flex-1 relative min-h-[400px] flex items-center justify-center">
                             {editandoFoto ? (
-                                <Cropper
-                                    image={imgBlobUrl} // <--- AQUI SE USA EL BLOB
-                                    crop={crop}
-                                    zoom={zoom}
-                                    rotation={rotation}
-                                    aspect={139 / 166}
-                                    onCropChange={setCrop}
-                                    onCropComplete={onCropComplete}
-                                    onZoomChange={setZoom}
-                                    onRotationChange={setRotation}
-                                />
+                                <Cropper image={imgBlobUrl} crop={crop} zoom={zoom} rotation={rotation} aspect={139 / 166} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} onRotationChange={setRotation} />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center p-8">
-                                    <img
-                                        src={imgBlobUrl} // <--- AQUI SE USA EL BLOB (Si es null no muestra nada aun)
-                                        alt="Foto"
-                                        className="max-h-full max-w-full object-contain shadow-2xl rounded-lg"
-                                        crossOrigin="anonymous"
-                                    />
-                                </div>
+                                <img src={imgBlobUrl} alt="Foto" className="max-h-full max-w-full object-contain shadow-2xl rounded-lg" crossOrigin="anonymous" />
                             )}
                         </div>
-
-                        {/* Controles Foto */}
                         <div className="p-4 bg-gray-800 flex justify-between items-center gap-4 border-t border-gray-700">
                             {editandoFoto ? (
                                 <>
                                     <div className="flex gap-4 items-center flex-1">
-                                        <div className="flex flex-col w-full max-w-[200px]">
-                                            <label className="text-xs text-gray-400">Zoom</label>
-                                            <input type="range" value={zoom} min={1} max={3} step={0.1}
-                                                onChange={(e) => setZoom(e.target.value)} className="accent-blue-500" />
-                                        </div>
-                                        <button onClick={() => setRotation(r => r + 90)} className="text-white hover:text-blue-400">
-                                            <RotateCw className="w-6 h-6" />
-                                        </button>
+                                        <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="accent-blue-500 w-full max-w-[200px]" />
+                                        <button onClick={() => setRotation(r => r + 90)} className="text-white hover:text-blue-400"><RotateCw className="w-6 h-6"/></button>
                                     </div>
                                     <div className="flex gap-2">
-                                        <button onClick={() => setEditandoFoto(false)} className="px-4 py-2 text-gray-300 hover:text-white text-sm">
-                                            Cancelar
-                                        </button>
-                                        <button onClick={() => handleSave('GUARDAR')} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-bold">
-                                            Aplicar
-                                        </button>
+                                        <button onClick={() => setEditandoFoto(false)} className="px-4 py-2 text-gray-300 hover:text-white text-sm">Cancelar</button>
+                                        <button onClick={() => handleSave('GUARDAR')} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-bold">Aplicar</button>
                                     </div>
                                 </>
                             ) : (
                                 <div className="w-full flex justify-center">
-                                    <button onClick={() => setEditandoFoto(true)} className="flex items-center gap-2 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors font-medium text-sm">
-                                        <Scissors className="w-4 h-4" /> Editar / Recortar Foto
-                                    </button>
+                                    <button onClick={() => setEditandoFoto(true)} className="flex items-center gap-2 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors font-medium text-sm"><Scissors className="w-4 h-4" /> Editar Foto</button>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* DERECHA: DATOS (DISEÑO 2 COLUMNAS) */}
                     <div className="w-full lg:w-2/5 p-6 md:p-8 overflow-y-auto bg-white flex flex-col">
-
                         {modoRechazo ? (
                             <div className="flex-1 flex flex-col animate-in slide-in-from-right-10">
-                                <h3 className="text-xl font-bold text-red-700 mb-4 flex items-center gap-2">
-                                    <Ban className="w-6 h-6" /> Rechazar Solicitud
-                                </h3>
-                                <div className="flex-1 space-y-4">
-                                    <p className="text-sm text-gray-600">Se notificará al usuario y se eliminará el registro.</p>
-                                    <textarea
-                                        value={motivoRechazo}
-                                        onChange={(e) => setMotivoRechazo(e.target.value)}
-                                        className="w-full h-40 p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-gray-800 text-sm"
-                                        placeholder="Motivo del rechazo..."
-                                    />
-                                </div>
+                                <h3 className="text-xl font-bold text-red-700 mb-4 flex items-center gap-2"><Ban className="w-6 h-6"/> Rechazar</h3>
+                                <textarea value={motivoRechazo} onChange={(e) => setMotivoRechazo(e.target.value)} className="w-full h-40 p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-gray-800 text-sm" placeholder="Motivo..." />
                                 <div className="mt-6 flex gap-3">
                                     <button onClick={() => setModoRechazo(false)} className="flex-1 py-3 text-gray-600 font-medium">Cancelar</button>
-                                    <button onClick={() => handleSave('RECHAZAR')} disabled={loading} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 flex justify-center items-center gap-2">
-                                        {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send className="w-4 h-4" />} Enviar Rechazo
-                                    </button>
+                                    <button onClick={() => handleSave('RECHAZAR')} disabled={loading} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 flex justify-center items-center gap-2">{loading ? <Loader2 className="animate-spin w-4 h-4"/> : <Send className="w-4 h-4"/>} Enviar</button>
                                 </div>
                             </div>
                         ) : (
                             <>
                                 <div className="flex items-center gap-3 mb-6 pb-4 border-b">
                                     <div className={`w-3 h-3 rounded-full ${miembro.estado === 'PENDIENTE' ? 'bg-yellow-400' : 'bg-green-500'}`}></div>
-                                    <h2 className="text-xl font-bold text-gray-800 uppercase tracking-wide truncate">
-                                        {miembro.nombres} {miembro.apellidos}
-                                    </h2>
+                                    <h2 className="text-xl font-bold text-gray-800 uppercase tracking-wide truncate">{miembro.nombres} {miembro.apellidos}</h2>
                                 </div>
-
                                 <div className="space-y-5 flex-1">
-                                    {/* GRUPO 1: IDENTIDAD (2 COLUMNAS) */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Documento ({miembro.tipo_documento})</label>
-                                            <input
-                                                value={formData.dpi_cui}
-                                                onChange={e => setFormData({ ...formData, dpi_cui: e.target.value })}
-                                                className="input-field font-mono bg-gray-50"
-                                            />
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Documento</label>
+                                            <input value={formData.dpi_cui} onChange={e => setFormData({...formData, dpi_cui: e.target.value})} className="input-field font-mono bg-gray-50" />
                                         </div>
-                                        <div className="space-y-1">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Rol / Función</label>
-                                            <select
-                                                value={formData.rol || 'ATLETA'}
-                                                onChange={e => setFormData({ ...formData, rol: e.target.value })}
-                                                className="input-field bg-white cursor-pointer"
-                                            >
-                                                <option value="ATLETA">ATLETA</option>
-                                                <option value="ENTRENADOR">ENTRENADOR</option>
-                                                <option value="DIRECTIVO">DIRECTIVO</option>
-                                                <option value="COLABORADOR">COLABORADOR</option>
-                                                <option value="ARBITRO">ARBITRO</option>
-                                            </select>
-                                        </div>
+                                        {/* SOLO MOSTRAMOS ROL SI ES MIEMBRO */}
+                                        {modo === 'MIEMBRO' && (
+                                            <div className="space-y-1">
+                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Rol</label>
+                                                <select value={formData.rol || 'ATLETA'} onChange={e => setFormData({...formData, rol: e.target.value})} className="input-field bg-white cursor-pointer">
+                                                    <option value="ATLETA">ATLETA</option>
+                                                    <option value="ENTRENADOR">ENTRENADOR</option>
+                                                    <option value="DIRECTIVO">DIRECTIVO</option>
+                                                    <option value="COLABORADOR">COLABORADOR</option>
+                                                    <option value="ARBITRO">ARBITRO</option>
+                                                </select>
+                                            </div>
+                                        )}
                                     </div>
-
-                                    {/* GRUPO 2: NOMBRES (2 COLUMNAS) */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nombres</label>
-                                            <input value={formData.nombres} onChange={e => setFormData({ ...formData, nombres: e.target.value })} className="input-field" />
+                                            <input value={formData.nombres} onChange={e => setFormData({...formData, nombres: e.target.value})} className="input-field" />
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Apellidos</label>
-                                            <input value={formData.apellidos} onChange={e => setFormData({ ...formData, apellidos: e.target.value })} className="input-field" />
+                                            <input value={formData.apellidos} onChange={e => setFormData({...formData, apellidos: e.target.value})} className="input-field" />
                                         </div>
                                     </div>
-
-                                    {/* GRUPO 3: CONTACTO (2 COLUMNAS) */}
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1 relative">
-                                            <div className="flex justify-between">
-                                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Correo</label>
-                                                <Lock className="w-3 h-3 text-gray-300" />
-                                            </div>
-                                            <input
-                                                value={formData.email || ''}
-                                                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                                                className="input-field"
-                                            />
+                                            <div className="flex justify-between"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Correo</label><Lock className="w-3 h-3 text-gray-300" /></div>
+                                            <input value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} className="input-field" />
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Teléfono</label>
-                                            <input value={formData.telefono || ''} onChange={e => setFormData({ ...formData, telefono: e.target.value })} className="input-field" />
+                                            <input value={formData.telefono || ''} onChange={e => setFormData({...formData, telefono: e.target.value})} className="input-field" />
                                         </div>
                                     </div>
                                 </div>
-
                                 <div className="mt-8 space-y-3 pt-6 border-t">
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleSave('GUARDAR')} className="flex-1 py-3 border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 text-sm">
-                                            Guardar Cambios
-                                        </button>
-                                        <button onClick={() => setModoRechazo(true)} className="px-4 py-3 border border-red-200 text-red-600 font-bold rounded-lg hover:bg-red-50 text-sm">
-                                            Rechazar
-                                        </button>
+                                        <button onClick={() => handleSave('GUARDAR')} className="flex-1 py-3 border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 text-sm">Guardar Cambios</button>
+                                        <button onClick={() => setModoRechazo(true)} className="px-4 py-3 border border-red-200 text-red-600 font-bold rounded-lg hover:bg-red-50 text-sm">Rechazar</button>
                                     </div>
-
                                     {miembro.estado !== 'APROBADO' && miembro.estado !== 'IMPRESO' && (
                                         <button onClick={() => handleSave('APROBAR')} className="w-full flex items-center justify-center gap-2 py-4 bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-800 shadow-lg hover:shadow-blue-500/30 transition-all">
-                                            {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
-                                            APROBAR Y SIGUIENTE
+                                            {loading ? <Loader2 className="animate-spin w-5 h-5"/> : <CheckCircle className="w-5 h-5" />} APROBAR Y SIGUIENTE
                                         </button>
                                     )}
                                 </div>
@@ -424,27 +299,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                     </div>
                 </div>
             </div>
-
-            <style jsx>{`
-                .input-field {
-                    width: 100%;
-                    padding: 0.6rem 0.75rem;
-                    border: 1px solid #e5e7eb;
-                    border-radius: 0.5rem;
-                    font-size: 0.875rem;
-                    color: #111827;
-                    outline: none;
-                    transition: all 0.2s;
-                }
-                .input-field:focus {
-                    border-color: #3b82f6;
-                    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-                }
-                .input-field:disabled {
-                    background-color: #f3f4f6;
-                    color: #9ca3af;
-                }
-            `}</style>
+            <style jsx>{` .input-field { width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; font-size: 0.875rem; color: #111827; outline: none; transition: all 0.2s; } .input-field:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); } `}</style>
         </div>
     )
 }

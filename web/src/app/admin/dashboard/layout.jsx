@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Loader2, LayoutDashboard, Users, LogOut, FileText, Settings } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { Car } from 'lucide-react' // Importa el icono
 
 export default function AdminDashboardLayout({ children }) {
     const router = useRouter()
@@ -57,8 +58,8 @@ export default function AdminDashboardLayout({ children }) {
                 <nav className="flex-1 px-4 py-6 space-y-2">
                     {/* ENLACE RESUMEN: Usamos comparación exacta (===) */}
                     <Link href="/admin/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname === '/admin/dashboard'
-                            ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
-                            : 'hover:bg-blue-800/50 text-blue-100'
+                        ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
+                        : 'hover:bg-blue-800/50 text-blue-100'
                         }`}>
                         <LayoutDashboard className="w-5 h-5" />
                         <span>Resumen</span>
@@ -66,13 +67,20 @@ export default function AdminDashboardLayout({ children }) {
 
                     {/* ENLACE SOLICITUDES: Usamos includes */}
                     <Link href="/admin/dashboard/solicitudes" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname.includes('/solicitudes')
-                            ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
-                            : 'hover:bg-blue-800/50 text-blue-100'
+                        ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
+                        : 'hover:bg-blue-800/50 text-blue-100'
                         }`}>
                         <FileText className="w-5 h-5" />
                         <span>Solicitudes</span>
                     </Link>
-
+                    {/* ENLACE PARQUEOS */}
+                    <Link href="/admin/dashboard/parqueos" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname.includes('/parqueos')
+                            ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
+                            : 'hover:bg-blue-800/50 text-blue-100'
+                        }`}>
+                        <Car className="w-5 h-5" />
+                        <span>Parqueos</span>
+                    </Link>
                     {/* ENLACE MIEMBROS 
                     COMENTADO POR AHORA
                     <Link href="/admin/dashboard/miembros" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname.includes('/miembros')
