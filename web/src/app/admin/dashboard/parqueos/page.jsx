@@ -59,6 +59,12 @@ export default function ParqueosAdminPage() {
         fetchMiembros()
     }
 
+    // Imprimir Lote
+    const handlePrintClick = () => {
+        window.open('/admin/print', '_blank')
+        setShowConfirmPrint(true)
+    }
+
     const handleConfirmarImpresion = async () => {
         setIsPrinting(true)
         try {
@@ -125,8 +131,8 @@ export default function ParqueosAdminPage() {
                 {/* NOTA: Aún no tenemos PrintPage para parqueos, así que esto abrirá el de miembros por ahora. 
                     Lo cambiaremos mañana cuando diseñemos el PDF de parqueo. */}
                 {filtroEstado === 'EN_COLA' && (
-                    <button onClick={() => alert('El diseño de PDF de Parqueo está en construcción.')} className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md">
-                        <Printer className="w-5 h-5" /> IMPRIMIR PARQUEOS
+                    <button onClick={handlePrintClick} className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md">
+                        <Printer className="w-5 h-5" /> IMPRIMIR PARQUEOS {miembrosFiltrados.length}
                     </button>
                 )}
 
