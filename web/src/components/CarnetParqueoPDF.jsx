@@ -66,14 +66,14 @@ const styles = StyleSheet.create({
         height: '44mm' // Resto de la altura
     },
     leftCol: {
-        width: '32%',
+        width: '30%', // Antes 32%
         alignItems: 'center',
         justifyContent: 'flex-start',
         paddingTop: 2
     },
     rightCol: {
-        width: '68%',
-        paddingLeft: 6,
+        width: '70%', // Antes 68% (Ganamos espacio)
+        paddingLeft: 4, // Reducimos padding interno
         justifyContent: 'flex-start'
     },
 
@@ -100,11 +100,13 @@ const styles = StyleSheet.create({
 
     // Datos
     nameText: {
-        fontSize: 10,
+        fontSize: 9, // Antes 10 (Cabe mejor)
         fontFamily: 'Helvetica-Bold',
         color: c.primary,
         marginBottom: 1,
-        textTransform: 'uppercase'
+        textTransform: 'uppercase',
+        // Opcional: si quieres forzar una sola línea aunque se corte (no recomendado, mejor que baje)
+        // maxLines: 1 
     },
     roleText: {
         fontSize: 7,
