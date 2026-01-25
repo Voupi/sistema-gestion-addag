@@ -338,9 +338,22 @@ export const CarnetDocument = ({ miembros }) => {
                         ))}
                     </Page>
 
-                    {/* PÁGINA PAR: REVERSOS */}
-                    <Page size="LETTER" style={styles.page}>
+                    {/* PÁGINA PAR: REVERSOS (MODIFICADA) */}
+                    <Page
+                        size="LETTER"
+                        style={[
+                            styles.page,
+                            {
+                                // 1. Llenar de derecha a izquierda (Efecto Espejo)
+                                flexDirection: 'row-reverse',
+                                // 2. Invertir márgenes para alineación física perfecta
+                                paddingLeft: 10,  // Antes era el paddingRight del frente
+                                paddingRight: 58  // Antes era el paddingLeft del frente
+                            }
+                        ]}
+                    >
                         {grupo.map((_, i) => (
+                            // La key debe ser 'i' para que React no se queje
                             <CarnetReverso key={i} />
                         ))}
                     </Page>
