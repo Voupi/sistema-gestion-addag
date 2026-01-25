@@ -113,6 +113,13 @@ const styles = StyleSheet.create({
         marginBottom: 6,
         textTransform: 'uppercase'
     },
+    labelSmall: {
+        fontSize: 5,
+        color: c.textLight,
+        fontFamily: 'Helvetica',
+        marginBottom: 1,
+        textTransform: 'uppercase'
+    },
 
     // Grid de datos técnicos (Estilo John Doe)
     dataRow: {
