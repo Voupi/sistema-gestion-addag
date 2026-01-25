@@ -260,7 +260,7 @@ const CarnetFrente = ({ miembro }) => (
                 <View style={{ width: '100%', height: 1, backgroundColor: c.accent, marginVertical: 3 }} />
 
                 {/* Línea decorativa o Rol */}
-                <View style={{ width: '100%', height: 1, backgroundColor: c.accent, marginVertical: 4 }} />
+                {/* <View style={{ width: '100%', height: 1, backgroundColor: c.accent, marginVertical: 4 }} /> */}
 
                 {/* Grid de Datos */}
                 <View style={styles.dataRow}>
