@@ -66,3 +66,8 @@ BEGIN
     WHERE id = parqueo_id;
 END;
 $$ LANGUAGE plpgsql;
+
+-- Agregar estados del flujo de producción
+ALTER TYPE estado_solicitud ADD VALUE 'EN_PROCESO';
+ALTER TYPE estado_solicitud ADD VALUE 'LISTO';
+ALTER TYPE estado_solicitud ADD VALUE 'ENTREGADO';
