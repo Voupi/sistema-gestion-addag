@@ -113,28 +113,50 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
         try {
             // --- RECHAZAR ---
             if (accion === 'RECHAZAR') {
+                // 1. Enviar correo
                 await rechazarSolicitud({
                     email: formData.email,
                     nombre: formData.nombres,
                     motivo: motivoRechazo
                 })
+
+                // 2. GUARDAR EN HISTORIAL (Nuevo paso)
+                const { error: historyError } = await supabase
+                    .from('solicitudes_rechazadas')
+                    .insert([{
+                        origen: modo, // 'MIEMBRO' o 'PARQUEO'
+                        motivo: motivoRechazo,
+                        nombres: formData.nombres,
+                        apellidos: formData.apellidos,
+                        dpi_cui: formData.dpi_cui,
+                        email: formData.email,
+                        telefono: formData.telefono,
+                        departamento: formData.departamento,
+                        foto_url: formData.foto_url,
+                        fecha_solicitud_original: formData.created_at
+                    }])
+
+                if (historyError) {
+                    console.error('Error guardando historial:', historyError)
+                    // No detenemos el proceso, pero logueamos el error
+                }
+
+                // 3. ELIMINAR de la tabla activa
                 await supabase.from(DB_TABLE).delete().eq('id', miembro.id)
 
-                await onUpdate() // Esperar a que se actualice la lista padre
-
-                // LÓGICA CARRUSEL MEJORADA:
-                // Al borrar, la lista se acorta. Si había más elementos adelante, 
-                // el "siguiente" ahora ocupa mi lugar (índice actual). 
-                // Solo si éramos el último, retrocedemos o cerramos.
-                if (listaMiembros.length > 1) {
-                    // Si no somos el último, no hacemos nada (currentIndex se queda igual y muestra al nuevo ocupante)
-                    // Si somos el último, retrocedemos
-                    if (currentIndex >= listaMiembros.length - 1) {
-                        setCurrentIndex(prev => Math.max(0, prev - 1))
-                    }
-                } else {
-                    onClose() // Si era el único, cerrar
+                // 4. (Opcional) Borrar foto del bucket
+                // Si quieres guardar la evidencia fotográfica, comenta estas lineas.
+                // Si quieres ahorrar espacio, déjalas descomentadas.
+                /*
+                if (miembro.foto_url) {
+                    const path = miembro.foto_url.split('/').pop().split('?')[0]
+                    await supabase.storage.from('fotos-carnet').remove([path])
                 }
+                */
+
+                onUpdate()
+                if (currentIndex < listaMiembros.length - 1) handleNavegacion('next')
+                else onClose()
                 return
             }
 

@@ -32,6 +32,7 @@ const TABS = [
     { id: 'EN_PROCESO', label: '3. PROCESO ⚙️', help: 'Actualmente en mesa de trabajo (secando, pegando).' },
     { id: 'LISTO', label: '4. LISTOS ✅', help: 'Terminados y notificados. Esperando en recepción.' },
     { id: 'ENTREGADO', label: '5. HISTORIAL 📂', help: 'Carnés ya entregados al usuario final.' },
+    { id: 'RECHAZADOS_HIST', label: '❌ RECHAZADOS', help: 'Historial de solicitudes denegadas.' },
 ]
 
 export default function ParqueosAdminPage() {
@@ -46,15 +47,47 @@ export default function ParqueosAdminPage() {
     const fetchMiembros = async () => {
         setLoading(true)
         try {
-            const { data, error } = await supabase
-                .from('parqueos')
-                .select('*')
-                .order('created_at', { ascending: false })
+            let data, error
+
+            if (filtroEstado === 'RECHAZADOS_HIST') {
+                // CONSULTA A LA TABLA DE RECHAZADOS (Solo los de Parqueo)
+                const result = await supabase
+                    .from('solicitudes_rechazadas')
+                    .select('*')
+                    .eq('origen', 'PARQUEO')
+                    .order('created_at', { ascending: false })
+
+                data = result.data
+                error = result.error
+
+                // Mapeamos para que la estructura visual no se rompa (agregamos estado ficticio)
+                if (data) {
+                    data = data.map(d => ({
+                        ...d,
+                        estado: 'RECHAZADO', // Estado visual para el badge rojo
+                        id: d.id // ID del registro histórico
+                    }))
+                }
+            } else {
+                // CONSULTA NORMAL A PARQUEOS
+                const result = await supabase
+                    .from('parqueos')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                data = result.data
+                error = result.error
+            }
+
             if (error) throw error
             setMiembros(data)
         } catch (error) { console.error(error); alert('Error cargando datos') }
         finally { setLoading(false) }
     }
+
+    // Efecto para recargar cuando cambias de pestaña
+    useEffect(() => {
+        fetchMiembros()
+    }, [filtroEstado]) // <--- AGREGAMOS DEPENDENCIA filtroEstado
 
     useEffect(() => { fetchMiembros() }, [])
 
@@ -76,6 +109,22 @@ export default function ParqueosAdminPage() {
         if (confirmar && !confirm('¿Avanzar a la siguiente etapa?')) return
         await supabase.from('parqueos').update({ estado: nuevoEstado }).eq('id', id)
         fetchMiembros()
+    }
+    const handleMarcarListo = async (miembro) => {
+        const confirm1 = confirm('¿Marcar como LISTO y notificar al usuario por correo?')
+        if (!confirm1) return
+        await avanzarEstadoIndividual(miembro.id, 'LISTO')
+        try {
+            await notificarImpresion({ email: miembro.email, nombre: miembro.nombres, tipo: 'PARQUEO' })
+        } catch (error) {
+            console.error('Error enviando notificación:', error)
+            alert('Error enviando correo de notificación.')
+        }
+    }
+    const handleMarcarEntregado = async (id) => {
+        const confirm1 = confirm('¿Marcar como ENTREGADO?')
+        if (!confirm1) return
+        await avanzarEstadoIndividual(id, 'ENTREGADO')
     }
 
     // --- ACCIONES MASIVAS ---
@@ -200,8 +249,8 @@ export default function ParqueosAdminPage() {
 
                         {(filtroEstado === 'IMPRESO' || filtroEstado === 'EN_PROCESO' || filtroEstado === 'LISTO') && (
                             <button onClick={handleAccionMasiva} className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg font-bold shadow-md animate-in zoom-in transition-all ${filtroEstado === 'IMPRESO' ? 'bg-orange-600 hover:bg-orange-700' :
-                                    filtroEstado === 'EN_PROCESO' ? 'bg-teal-600 hover:bg-teal-700' :
-                                        'bg-gray-700 hover:bg-gray-800'
+                                filtroEstado === 'EN_PROCESO' ? 'bg-teal-600 hover:bg-teal-700' :
+                                    'bg-gray-700 hover:bg-gray-800'
                                 }`}>
                                 {isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
                                 {filtroEstado === 'IMPRESO' ? 'INICIAR PROCESO' : filtroEstado === 'EN_PROCESO' ? 'FINALIZAR Y NOTIFICAR' : 'ENTREGAR TODOS'} ({miembrosFiltrados.length})
@@ -240,33 +289,53 @@ export default function ParqueosAdminPage() {
                                                     <p className="font-mono text-xs text-gray-500">{m.dpi_cui}</p>
                                                 </div>
                                             </div>
+
                                         </td>
-                                        <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-[10px] font-bold border ${getStatusColor(m.estado)}`}>{m.estado}</span></td>
+                                        <td className="px-6 py-4"><span className={`px-2 py-1 rounded text-[10px] font-bold border ${getStatusColor(m.estado)}`}>{m.estado}</span>
+                                            {/* Mostrar motivo si es rechazado */}
+                                            {m.estado === 'RECHAZADO' && (
+                                                <p className="text-[10px] text-red-600 mt-1 max-w-[200px] truncate" title={m.motivo}>
+                                                    {m.motivo}
+                                                </p>
+                                            )}
+                                        </td>
+                                        {/* Celda Acciones */}
                                         <td className="px-6 py-4 text-right">
                                             <div className="flex justify-end gap-2 items-center">
-                                                {m.estado === 'IMPRESO' && (
-                                                    <button onClick={() => avanzarEstadoIndividual(m.id, 'EN_PROCESO')} className="btn-action bg-orange-50 text-orange-700 border-orange-200" title="Pasar a Corte">
-                                                        <Scissors className="w-4 h-4" /> En Proceso
+                                                {m.estado === 'RECHAZADO' ? (
+                                                    <button
+                                                        onClick={() => alert(`Motivo de rechazo:\n\n${m.motivo}`)}
+                                                        className="px-3 py-1.5 border border-red-200 text-red-600 bg-red-50 rounded text-xs font-medium"
+                                                    >
+                                                        Ver Motivo
                                                     </button>
-                                                )}
-                                                {m.estado === 'EN_PROCESO' && (
-                                                    <button onClick={() => handleMarcarListo(m)} className="btn-action bg-teal-50 text-teal-700 border-teal-200" title="Finalizar">
-                                                        <PackageCheck className="w-4 h-4" /> ¡Listo!
-                                                    </button>
-                                                )}
-                                                {m.estado === 'LISTO' && (
-                                                    <button onClick={() => handleMarcarEntregado(m.id)} className="btn-action bg-gray-100 text-gray-700 border-gray-300" title="Entregar">
-                                                        <UserCheck className="w-4 h-4" /> Entregar
-                                                    </button>
-                                                )}
+                                                ) : (
+                                                    <>
+                                                        {m.estado === 'IMPRESO' && (
+                                                            <button onClick={() => avanzarEstadoIndividual(m.id, 'EN_PROCESO')} className="btn-action bg-orange-50 text-orange-700 border-orange-200" title="Pasar a Corte">
+                                                                <Scissors className="w-4 h-4" /> En Proceso
+                                                            </button>
+                                                        )}
+                                                        {m.estado === 'EN_PROCESO' && (
+                                                            <button onClick={() => handleMarcarListo(m)} className="btn-action bg-teal-50 text-teal-700 border-teal-200" title="Finalizar">
+                                                                <PackageCheck className="w-4 h-4" /> ¡Listo!
+                                                            </button>
+                                                        )}
+                                                        {m.estado === 'LISTO' && (
+                                                            <button onClick={() => handleMarcarEntregado(m.id)} className="btn-action bg-gray-100 text-gray-700 border-gray-300" title="Entregar">
+                                                                <UserCheck className="w-4 h-4" /> Entregar
+                                                            </button>
+                                                        )}
 
-                                                <button onClick={() => setMiembroSeleccionado(m)} className="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 text-xs font-medium">Ver</button>
+                                                        <button onClick={() => setMiembroSeleccionado(m)} className="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 text-xs font-medium">Ver</button>
 
-                                                {(m.estado === 'ENTREGADO' || m.estado === 'LISTO' || m.estado === 'IMPRESO') && (
-                                                    <button onClick={() => handleReimprimir(m.id)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded" title="Reimprimir"><RotateCcw className="w-4 h-4" /></button>
-                                                )}
-                                                {(m.estado === 'APROBADO' || m.estado === 'REIMPRESION') && (
-                                                    <button onClick={() => handleSacarDeCola(m)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Sacar"><XCircle className="w-4 h-4" /></button>
+                                                        {(m.estado === 'ENTREGADO' || m.estado === 'LISTO' || m.estado === 'IMPRESO') && (
+                                                            <button onClick={() => handleReimprimir(m.id)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded" title="Reimprimir"><RotateCcw className="w-4 h-4" /></button>
+                                                        )}
+                                                        {(m.estado === 'APROBADO' || m.estado === 'REIMPRESION') && (
+                                                            <button onClick={() => handleSacarDeCola(m)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Sacar"><XCircle className="w-4 h-4" /></button>
+                                                        )}
+                                                    </>
                                                 )}
                                             </div>
                                         </td>
