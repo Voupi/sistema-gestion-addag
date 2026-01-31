@@ -4,10 +4,10 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import Cropper from 'react-easy-crop'
 import { rechazarSolicitud } from '@/actions/rechazarSolicitud'
-import { 
-    X, RotateCw, CheckCircle, Loader2, 
-    ChevronRight, ChevronLeft, 
-    Scissors, Ban, Send, Lock 
+import {
+    X, RotateCw, CheckCircle, Loader2,
+    ChevronRight, ChevronLeft,
+    Scissors, Ban, Send, Lock
 } from 'lucide-react'
 
 const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
@@ -67,7 +67,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     const [rotation, setRotation] = useState(0)
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
     const [editandoFoto, setEditandoFoto] = useState(false)
-    const [imgBlobUrl, setImgBlobUrl] = useState(null) 
+    const [imgBlobUrl, setImgBlobUrl] = useState(null)
 
     useEffect(() => {
         setFormData({ ...listaMiembros[currentIndex] })
@@ -111,67 +111,83 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     const handleSave = async (accion) => {
         setLoading(true)
         try {
+            // --- RECHAZAR ---
             if (accion === 'RECHAZAR') {
                 await rechazarSolicitud({
                     email: formData.email,
                     nombre: formData.nombres,
                     motivo: motivoRechazo
                 })
-                await supabase.from(DB_TABLE).delete().eq('id', miembro.id) // Usa tabla dinámica
-                onUpdate()
-                if (currentIndex < listaMiembros.length - 1) handleNavegacion('next')
-                else onClose()
+                await supabase.from(DB_TABLE).delete().eq('id', miembro.id)
+
+                await onUpdate() // Esperar a que se actualice la lista padre
+
+                // LÓGICA CARRUSEL MEJORADA:
+                // Al borrar, la lista se acorta. Si había más elementos adelante, 
+                // el "siguiente" ahora ocupa mi lugar (índice actual). 
+                // Solo si éramos el último, retrocedemos o cerramos.
+                if (listaMiembros.length > 1) {
+                    // Si no somos el último, no hacemos nada (currentIndex se queda igual y muestra al nuevo ocupante)
+                    // Si somos el último, retrocedemos
+                    if (currentIndex >= listaMiembros.length - 1) {
+                        setCurrentIndex(prev => Math.max(0, prev - 1))
+                    }
+                } else {
+                    onClose() // Si era el único, cerrar
+                }
                 return
             }
 
+            // --- GUARDAR / APROBAR ---
             let updates = {
                 nombres: formData.nombres,
                 apellidos: formData.apellidos,
                 dpi_cui: formData.dpi_cui,
                 email: formData.email,
-                telefono: formData.telefono
+                telefono: formData.telefono,
             }
-            
-            // Solo agregar ROL si es MIEMBRO
-            if (modo === 'MIEMBRO') {
-                updates.rol = formData.rol
-            }
+            if (modo === 'MIEMBRO') updates.rol = formData.rol
 
             if (editandoFoto && croppedAreaPixels) {
                 const blob = await getCroppedImg(imgBlobUrl, croppedAreaPixels, rotation)
                 const prefix = modo === 'PARQUEO' ? 'P_' : ''
                 const fileName = `${prefix}procesada_${miembro.dpi_cui}_${Date.now()}.jpg`
-                
+
                 const { error: uploadError } = await supabase.storage
                     .from('fotos-carnet')
                     .upload(fileName, blob, { upsert: true })
-                
+
                 if (uploadError) throw uploadError
                 const { data: urlData } = supabase.storage.from('fotos-carnet').getPublicUrl(fileName)
                 updates.foto_url_final = urlData.publicUrl
             }
 
-            // Update Dinámico
             await supabase.from(DB_TABLE).update(updates).eq('id', miembro.id)
 
+            let aprobo = false
             if (accion === 'APROBAR') {
                 if (miembro.estado !== 'APROBADO' && miembro.estado !== 'IMPRESO') {
-                    // RPC Dinámico
-                    const params = {}
-                    params[ID_PARAM] = miembro.id
-                    await supabase.rpc(RPC_APROBAR, params)
+                    await supabase.rpc(RPC_APROBAR, { [ID_PARAM]: miembro.id })
+                    aprobo = true
                 }
             }
 
-            onUpdate()
+            await onUpdate() // Refrescar lista
             setLoading(false)
-            
-            if (accion === 'APROBAR' && currentIndex < listaMiembros.length - 1) {
-                handleNavegacion('next')
-            } else if (accion === 'APROBAR') {
-                onClose()
+
+            if (accion === 'APROBAR') {
+                // Si aprobamos, probablemente el item desaparezca de la lista de "Pendientes"
+                // Aplicamos la misma lógica que al eliminar:
+                if (listaMiembros.length > 1) {
+                    if (currentIndex >= listaMiembros.length - 1) {
+                        setCurrentIndex(prev => Math.max(0, prev - 1))
+                    }
+                    // Si no es el último, mantenemos el índice (el siguiente item vendrá a nosotros)
+                } else {
+                    onClose()
+                }
             } else {
-                setEditandoFoto(false) 
+                setEditandoFoto(false)
                 alert("Cambios guardados correctamente.")
             }
 
@@ -190,9 +206,9 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden font-sans">
                 <div className="bg-gray-100 px-6 py-3 flex justify-between items-center border-b">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => handleNavegacion('prev')} disabled={currentIndex === 0} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors"><ChevronLeft className="w-6 h-6"/></button>
+                        <button onClick={() => handleNavegacion('prev')} disabled={currentIndex === 0} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors"><ChevronLeft className="w-6 h-6" /></button>
                         <span className="text-sm font-medium text-gray-500">Solicitud {currentIndex + 1} de {listaMiembros.length} ({modo})</span>
-                        <button onClick={() => handleNavegacion('next')} disabled={currentIndex === listaMiembros.length - 1} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors"><ChevronRight className="w-6 h-6"/></button>
+                        <button onClick={() => handleNavegacion('next')} disabled={currentIndex === listaMiembros.length - 1} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors"><ChevronRight className="w-6 h-6" /></button>
                     </div>
                     <button onClick={onClose} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"><X className="w-6 h-6" /></button>
                 </div>
@@ -211,7 +227,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                 <>
                                     <div className="flex gap-4 items-center flex-1">
                                         <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="accent-blue-500 w-full max-w-[200px]" />
-                                        <button onClick={() => setRotation(r => r + 90)} className="text-white hover:text-blue-400"><RotateCw className="w-6 h-6"/></button>
+                                        <button onClick={() => setRotation(r => r + 90)} className="text-white hover:text-blue-400"><RotateCw className="w-6 h-6" /></button>
                                     </div>
                                     <div className="flex gap-2">
                                         <button onClick={() => setEditandoFoto(false)} className="px-4 py-2 text-gray-300 hover:text-white text-sm">Cancelar</button>
@@ -229,11 +245,11 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                     <div className="w-full lg:w-2/5 p-6 md:p-8 overflow-y-auto bg-white flex flex-col">
                         {modoRechazo ? (
                             <div className="flex-1 flex flex-col animate-in slide-in-from-right-10">
-                                <h3 className="text-xl font-bold text-red-700 mb-4 flex items-center gap-2"><Ban className="w-6 h-6"/> Rechazar</h3>
+                                <h3 className="text-xl font-bold text-red-700 mb-4 flex items-center gap-2"><Ban className="w-6 h-6" /> Rechazar</h3>
                                 <textarea value={motivoRechazo} onChange={(e) => setMotivoRechazo(e.target.value)} className="w-full h-40 p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-gray-800 text-sm" placeholder="Motivo..." />
                                 <div className="mt-6 flex gap-3">
                                     <button onClick={() => setModoRechazo(false)} className="flex-1 py-3 text-gray-600 font-medium">Cancelar</button>
-                                    <button onClick={() => handleSave('RECHAZAR')} disabled={loading} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 flex justify-center items-center gap-2">{loading ? <Loader2 className="animate-spin w-4 h-4"/> : <Send className="w-4 h-4"/>} Enviar</button>
+                                    <button onClick={() => handleSave('RECHAZAR')} disabled={loading} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 flex justify-center items-center gap-2">{loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send className="w-4 h-4" />} Enviar</button>
                                 </div>
                             </div>
                         ) : (
@@ -246,13 +262,13 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Documento</label>
-                                            <input value={formData.dpi_cui} onChange={e => setFormData({...formData, dpi_cui: e.target.value})} className="input-field font-mono bg-gray-50" />
+                                            <input value={formData.dpi_cui} onChange={e => setFormData({ ...formData, dpi_cui: e.target.value })} className="input-field font-mono bg-gray-50" />
                                         </div>
                                         {/* SOLO MOSTRAMOS ROL SI ES MIEMBRO */}
                                         {modo === 'MIEMBRO' && (
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Rol</label>
-                                                <select value={formData.rol || 'ATLETA'} onChange={e => setFormData({...formData, rol: e.target.value})} className="input-field bg-white cursor-pointer">
+                                                <select value={formData.rol || 'ATLETA'} onChange={e => setFormData({ ...formData, rol: e.target.value })} className="input-field bg-white cursor-pointer">
                                                     <option value="ATLETA">ATLETA</option>
                                                     <option value="ENTRENADOR">ENTRENADOR</option>
                                                     <option value="DIRECTIVO">DIRECTIVO</option>
@@ -265,21 +281,21 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Nombres</label>
-                                            <input value={formData.nombres} onChange={e => setFormData({...formData, nombres: e.target.value})} className="input-field" />
+                                            <input value={formData.nombres} onChange={e => setFormData({ ...formData, nombres: e.target.value })} className="input-field" />
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Apellidos</label>
-                                            <input value={formData.apellidos} onChange={e => setFormData({...formData, apellidos: e.target.value})} className="input-field" />
+                                            <input value={formData.apellidos} onChange={e => setFormData({ ...formData, apellidos: e.target.value })} className="input-field" />
                                         </div>
                                     </div>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-1 relative">
                                             <div className="flex justify-between"><label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Correo</label><Lock className="w-3 h-3 text-gray-300" /></div>
-                                            <input value={formData.email || ''} onChange={e => setFormData({...formData, email: e.target.value})} className="input-field" />
+                                            <input value={formData.email || ''} onChange={e => setFormData({ ...formData, email: e.target.value })} className="input-field" />
                                         </div>
                                         <div className="space-y-1">
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Teléfono</label>
-                                            <input value={formData.telefono || ''} onChange={e => setFormData({...formData, telefono: e.target.value})} className="input-field" />
+                                            <input value={formData.telefono || ''} onChange={e => setFormData({ ...formData, telefono: e.target.value })} className="input-field" />
                                         </div>
                                     </div>
                                 </div>
@@ -290,7 +306,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                     </div>
                                     {miembro.estado !== 'APROBADO' && miembro.estado !== 'IMPRESO' && (
                                         <button onClick={() => handleSave('APROBAR')} className="w-full flex items-center justify-center gap-2 py-4 bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-800 shadow-lg hover:shadow-blue-500/30 transition-all">
-                                            {loading ? <Loader2 className="animate-spin w-5 h-5"/> : <CheckCircle className="w-5 h-5" />} APROBAR Y SIGUIENTE
+                                            {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <CheckCircle className="w-5 h-5" />} APROBAR Y SIGUIENTE
                                         </button>
                                     )}
                                 </div>
