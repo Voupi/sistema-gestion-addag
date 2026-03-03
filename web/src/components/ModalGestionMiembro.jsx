@@ -45,6 +45,7 @@ const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
 }
 
 export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onClose, onUpdate, modo = 'MIEMBRO' }) {
+    const [enviarCorreoRechazo, setEnviarCorreoRechazo] = useState(false) // Por defecto desactivado
     const [currentIndex, setCurrentIndex] = useState(0)
     const miembro = listaMiembros[currentIndex]
 
@@ -113,12 +114,13 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
         try {
             // --- RECHAZAR ---
             if (accion === 'RECHAZAR') {
-                // 1. Enviar correo
-                await rechazarSolicitud({
-                    email: formData.email,
-                    nombre: formData.nombres,
-                    motivo: motivoRechazo
-                })
+                if (enviarCorreoRechazo) {
+                    await rechazarSolicitud({
+                        email: formData.email,
+                        nombre: formData.nombres,
+                        motivo: motivoRechazo
+                    })
+                }
 
                 // 2. GUARDAR EN HISTORIAL (Nuevo paso)
                 const { error: historyError } = await supabase
@@ -133,7 +135,8 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                         telefono: formData.telefono,
                         departamento: formData.departamento,
                         foto_url: formData.foto_url,
-                        fecha_solicitud_original: formData.created_at
+                        fecha_solicitud_original: formData.created_at,
+                        entrenador_id: formData.entrenador_id
                     }])
 
                 if (historyError) {
@@ -268,10 +271,25 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                         {modoRechazo ? (
                             <div className="flex-1 flex flex-col animate-in slide-in-from-right-10">
                                 <h3 className="text-xl font-bold text-red-700 mb-4 flex items-center gap-2"><Ban className="w-6 h-6" /> Rechazar</h3>
-                                <textarea value={motivoRechazo} onChange={(e) => setMotivoRechazo(e.target.value)} className="w-full h-40 p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-gray-800 text-sm" placeholder="Motivo..." />
+
+                                <textarea value={motivoRechazo} onChange={(e) => setMotivoRechazo(e.target.value)} className="w-full h-32 p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-gray-800 text-sm mb-4" placeholder="Motivo..." />
+
+                                {/* NUEVO CHECKBOX */}
+                                <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                    <input
+                                        type="checkbox"
+                                        checked={enviarCorreoRechazo}
+                                        onChange={(e) => setEnviarCorreoRechazo(e.target.checked)}
+                                        className="w-4 h-4 text-red-600 rounded"
+                                    />
+                                    <span>Notificar motivo al usuario por correo electrónico</span>
+                                </label>
+
                                 <div className="mt-6 flex gap-3">
                                     <button onClick={() => setModoRechazo(false)} className="flex-1 py-3 text-gray-600 font-medium">Cancelar</button>
-                                    <button onClick={() => handleSave('RECHAZAR')} disabled={loading} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 flex justify-center items-center gap-2">{loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send className="w-4 h-4" />} Enviar</button>
+                                    <button onClick={() => handleSave('RECHAZAR')} disabled={loading} className="flex-1 py-3 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 flex justify-center items-center gap-2">
+                                        {loading ? <Loader2 className="animate-spin w-4 h-4" /> : <Send className="w-4 h-4" />} Confirmar Rechazo
+                                    </button>
                                 </div>
                             </div>
                         ) : (
