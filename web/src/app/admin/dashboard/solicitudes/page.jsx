@@ -40,7 +40,7 @@ export default function SolicitudesAdminPage() {
     const [verSoloMias, setVerSoloMias] = useState(false)
     const [miembros, setMiembros] = useState([])
     const [loading, setLoading] = useState(true)
-    const [filtroEstado, setFiltroEstado] = useState('TODOS')
+    const [filtroEstado, setFiltroEstado] = useState('PENDIENTE')
     const [busqueda, setBusqueda] = useState('')
     const [miembroSeleccionado, setMiembroSeleccionado] = useState(null)
     const [showConfirmPrint, setShowConfirmPrint] = useState(false)
@@ -73,7 +73,7 @@ export default function SolicitudesAdminPage() {
 
             // 2. Construir la consulta base
             if (filtroEstado === 'RECHAZADOS_HIST') {
-                let query = supabase.from('solicitudes_rechazadas').select('*').eq('origen', 'MIEMBRO')
+                let query = supabase.from('solicitudes_rechazadas').select('*, entrenadores(nombre_completo)').eq('origen', 'MIEMBRO')
 
                 // Si NO soy admin, solo veo a MIS rechazados
                 if (currentProfile && !currentProfile.es_admin) {
@@ -311,7 +311,7 @@ export default function SolicitudesAdminPage() {
 
                         <div className="relative w-full xl:w-80">
                             <Search className="absolute left-3 top-2.5 w-4 h-4 text-gray-400" />
-                            <input type="text" placeholder="Buscar..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500" />
+                            <input type="text" placeholder="Buscar..." value={busqueda} onChange={(e) => setBusqueda(e.target.value)} className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 outline-none focus:ring-2 focus:ring-blue-500" />
                         </div>
                     </div>
                 </div>
@@ -340,10 +340,16 @@ export default function SolicitudesAdminPage() {
                                                     <div>
                                                         <p className="font-bold text-gray-900">{m.nombres} {m.apellidos}</p>
                                                         <p className="text-xs text-gray-500">{m.email}</p>
-                                                        {/* ETIQUETA NUEVA (Solo se ve si trajo el nombre) */}
+                                                        {/* Entrenador asignado (muestra en todas las vistas, incluido rechazados) */}
                                                         {m.entrenadores?.nombre_completo && (
                                                             <span className="inline-block mt-1 px-2 py-0.5 bg-gray-100 text-gray-600 text-[10px] rounded-full border border-gray-200">
                                                                 Prof. {m.entrenadores.nombre_completo}
+                                                            </span>
+                                                        )}
+                                                        {/* Quién aprobó — solo en Cola e Historial */}
+                                                        {(filtroEstado === 'EN_COLA' || filtroEstado === 'ENTREGADO') && m.aprobado_por && (
+                                                            <span className="inline-block mt-1 ml-1 px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded-full border border-blue-200">
+                                                                ✓ {m.aprobado_por}
                                                             </span>
                                                         )}
                                                     </div>
@@ -367,7 +373,7 @@ export default function SolicitudesAdminPage() {
                                                             {m.estado === 'EN_PROCESO' && <button onClick={() => handleMarcarListo(m)} className="btn-action bg-indigo-50 text-indigo-700 border-indigo-200" title="Finalizar"><PackageCheck className="w-4 h-4" /></button>}
                                                             {m.estado === 'LISTO' && <button onClick={() => handleMarcarEntregado(m.id)} className="btn-action bg-gray-100 text-gray-700 border-gray-300" title="Entregar"><UserCheck className="w-4 h-4" /></button>}
 
-                                                            <button onClick={() => setMiembroSeleccionado(m)} className="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 text-xs font-medium">Ver</button>
+                                                            <button onClick={() => setMiembroSeleccionado(m)} className="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 text-xs font-medium text-gray-700">Ver</button>
 
                                                             {(m.estado === 'ENTREGADO' || m.estado === 'LISTO' || m.estado === 'IMPRESO') && (
                                                                 <button onClick={() => handleReimprimir(m.id)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded" title="Reimprimir"><RotateCcw className="w-4 h-4" /></button>

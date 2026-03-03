@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/digest-pendientes",
+      "schedule": "0 14 * * *"
+    }
+  ]
+}

@@ -86,7 +86,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     const [formData, setFormData] = useState({ ...miembro })
     const [loading, setLoading] = useState(false)
     const [modoRechazo, setModoRechazo] = useState(false)
-    const [motivoRechazo, setMotivoRechazo] = useState('La fotografía no cumple con los requisitos.')
+    const [motivoRechazo, setMotivoRechazo] = useState('')
     const [crop, setCrop] = useState({ x: 0, y: 0 })
     const [zoom, setZoom] = useState(1)
     const [rotation, setRotation] = useState(0)
@@ -229,6 +229,13 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                 updates.foto_url_final = nuevaUrl
             }
 
+            // RF03: registrar quién aprobó y cuándo (solo al aprobar por primera vez)
+            if (accion === 'APROBAR' && miembro.estado !== 'APROBADO' && miembro.estado !== 'IMPRESO') {
+                const { data: authData } = await supabase.auth.getUser()
+                updates.aprobado_por = authData?.user?.email || 'sistema'
+                updates.fecha_aprobacion = new Date().toISOString()
+            }
+
             await supabase.from(DB_TABLE).update(updates).eq('id', miembro.id)
 
             if (accion === 'APROBAR') {
@@ -270,9 +277,9 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden font-sans">
                 <div className="bg-gray-100 px-6 py-3 flex justify-between items-center border-b">
                     <div className="flex items-center gap-4">
-                        <button onClick={() => handleNavegacion('prev')} disabled={currentIndex === 0} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors"><ChevronLeft className="w-6 h-6" /></button>
+                        <button onClick={() => handleNavegacion('prev')} disabled={currentIndex === 0} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors text-gray-700"><ChevronLeft className="w-6 h-6" /></button>
                         <span className="text-sm font-medium text-gray-500">Solicitud {currentIndex + 1} de {listaMiembros.length} ({modo})</span>
-                        <button onClick={() => handleNavegacion('next')} disabled={currentIndex === listaMiembros.length - 1} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors"><ChevronRight className="w-6 h-6" /></button>
+                        <button onClick={() => handleNavegacion('next')} disabled={currentIndex === listaMiembros.length - 1} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors text-gray-700"><ChevronRight className="w-6 h-6" /></button>
                     </div>
                     <button onClick={onClose} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"><X className="w-6 h-6" /></button>
                 </div>
