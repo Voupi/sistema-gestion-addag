@@ -109,7 +109,7 @@ export async function GET(request) {
 
                         <!-- BOTÓN DE ACCESO RÁPIDO -->
                         <div style="text-align: center; margin: 30px 0;">
-                            <a href="https://sistema-gestion-addag.vercel.app/admin" 
+                            <a href="https://sistema-gestion-addag.vercel.app/admin/login" 
                             style="background-color: #1d4ed8; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block; shadow: 0 4px 6px rgba(0,0,0,0.1);">
                             Ingresar al Panel de Control
                             </a>
