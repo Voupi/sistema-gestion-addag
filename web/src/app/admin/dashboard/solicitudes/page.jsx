@@ -46,6 +46,8 @@ export default function SolicitudesAdminPage() {
     const [showConfirmPrint, setShowConfirmPrint] = useState(false)
     const [isPrinting, setIsPrinting] = useState(false)
     const [userProfile, setUserProfile] = useState(null)
+    // Historia 12: checkbox correo al finalizar fase EN_PROCESO (desactivado por defecto)
+    const [enviarCorreoFinalizacion, setEnviarCorreoFinalizacion] = useState(false)
 
     // Modificamos el Fetch para que sea inteligente
     const fetchMiembros = async () => {
@@ -135,16 +137,18 @@ export default function SolicitudesAdminPage() {
     }
 
     const handleMarcarListo = async (miembro) => {
-        if (!confirm(`¿Carné de ${miembro.nombres} terminado? Se enviará correo.`)) return
+        if (!confirm(`¿Marcar carné de ${miembro.nombres} como LISTO?`)) return
 
         await supabase.from('miembros').update({ estado: 'LISTO' }).eq('id', miembro.id)
 
-        // Notificación tipo GENERAL (Azul)
-        notificarImpresion({
-            email: miembro.email,
-            nombre: miembro.nombres,
-            tipo: 'GENERAL'
-        })
+        // Historia 12: solo envía correo si el checkbox está activo
+        if (enviarCorreoFinalizacion) {
+            notificarImpresion({
+                email: miembro.email,
+                nombre: miembro.nombres,
+                tipo: 'GENERAL'
+            })
+        }
         fetchMiembros()
     }
 
@@ -183,7 +187,7 @@ export default function SolicitudesAdminPage() {
             const { error } = await supabase.from('miembros').update({ estado: nuevoEstado }).in('id', ids)
             if (error) throw error
 
-            if (requiereCorreo) {
+            if (requiereCorreo && enviarCorreoFinalizacion) {
                 const notificaciones = miembrosFiltrados.map(m =>
                     notificarImpresion({ email: m.email, nombre: m.nombres, tipo: 'GENERAL' })
                 )
@@ -288,8 +292,20 @@ export default function SolicitudesAdminPage() {
                                         'bg-gray-700 hover:bg-gray-800'
                                     }`}>
                                     {isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                                    {filtroEstado === 'IMPRESO' ? 'INICIAR PROCESO' : filtroEstado === 'EN_PROCESO' ? 'FINALIZAR Y NOTIFICAR' : 'ENTREGAR TODOS'} ({miembrosFiltrados.length})
+                                    {filtroEstado === 'IMPRESO' ? 'INICIAR PROCESO' : filtroEstado === 'EN_PROCESO' ? 'FINALIZAR' : 'ENTREGAR TODOS'} ({miembrosFiltrados.length})
                                 </button>
+                            )}
+                            {/* Historia 12: checkbox correo al finalizar - solo visible en fase EN_PROCESO */}
+                            {filtroEstado === 'EN_PROCESO' && (
+                                <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={enviarCorreoFinalizacion}
+                                        onChange={e => setEnviarCorreoFinalizacion(e.target.checked)}
+                                        className="w-3.5 h-3.5 accent-indigo-600"
+                                    />
+                                    Notificar por correo al finalizar
+                                </label>
                             )}
                         </div>
 

@@ -43,6 +43,8 @@ export default function ParqueosAdminPage() {
     const [miembroSeleccionado, setMiembroSeleccionado] = useState(null)
     const [showConfirmPrint, setShowConfirmPrint] = useState(false)
     const [isPrinting, setIsPrinting] = useState(false)
+    // Historia 12: checkbox correo al finalizar fase EN_PROCESO (desactivado por defecto)
+    const [enviarCorreoFinalizacion, setEnviarCorreoFinalizacion] = useState(false)
 
     const fetchMiembros = async () => {
         setLoading(true)
@@ -111,14 +113,16 @@ export default function ParqueosAdminPage() {
         fetchMiembros()
     }
     const handleMarcarListo = async (miembro) => {
-        const confirm1 = confirm('¿Marcar como LISTO y notificar al usuario por correo?')
-        if (!confirm1) return
+        if (!confirm(`¿Marcar carné de ${miembro.nombres} como LISTO?`)) return
         await avanzarEstadoIndividual(miembro.id, 'LISTO')
-        try {
-            await notificarImpresion({ email: miembro.email, nombre: miembro.nombres, tipo: 'PARQUEO' })
-        } catch (error) {
-            console.error('Error enviando notificación:', error)
-            alert('Error enviando correo de notificación.')
+        // Historia 12: solo envía correo si el checkbox está activo
+        if (enviarCorreoFinalizacion) {
+            try {
+                await notificarImpresion({ email: miembro.email, nombre: miembro.nombres, tipo: 'PARQUEO' })
+            } catch (error) {
+                console.error('Error enviando notificación:', error)
+                alert('Error enviando correo de notificación.')
+            }
         }
     }
     const handleMarcarEntregado = async (id) => {
@@ -159,7 +163,7 @@ export default function ParqueosAdminPage() {
             const { error } = await supabase.from('parqueos').update({ estado: nuevoEstado }).in('id', ids)
             if (error) throw error
 
-            if (requiereCorreo) {
+            if (requiereCorreo && enviarCorreoFinalizacion) {
                 const notificaciones = miembrosFiltrados.map(m =>
                     notificarImpresion({ email: m.email, nombre: m.nombres, tipo: 'PARQUEO' })
                 )
@@ -253,8 +257,20 @@ export default function ParqueosAdminPage() {
                                     'bg-gray-700 hover:bg-gray-800'
                                 }`}>
                                 {isPrinting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                                {filtroEstado === 'IMPRESO' ? 'INICIAR PROCESO' : filtroEstado === 'EN_PROCESO' ? 'FINALIZAR Y NOTIFICAR' : 'ENTREGAR TODOS'} ({miembrosFiltrados.length})
+                                {filtroEstado === 'IMPRESO' ? 'INICIAR PROCESO' : filtroEstado === 'EN_PROCESO' ? 'FINALIZAR' : 'ENTREGAR TODOS'} ({miembrosFiltrados.length})
                             </button>
+                        )}
+                        {/* Historia 12: checkbox correo al finalizar - solo visible en fase EN_PROCESO */}
+                        {filtroEstado === 'EN_PROCESO' && (
+                            <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer bg-teal-50 border border-teal-200 px-3 py-2 rounded-lg select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={enviarCorreoFinalizacion}
+                                    onChange={e => setEnviarCorreoFinalizacion(e.target.checked)}
+                                    className="w-3.5 h-3.5 accent-teal-600"
+                                />
+                                Notificar por correo al finalizar
+                            </label>
                         )}
                     </div>
 

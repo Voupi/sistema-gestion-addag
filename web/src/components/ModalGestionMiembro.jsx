@@ -7,7 +7,7 @@ import { rechazarSolicitud } from '@/actions/rechazarSolicitud'
 import {
     X, RotateCw, CheckCircle, Loader2,
     ChevronRight, ChevronLeft,
-    Scissors, Ban, Send, Lock
+    Scissors, Ban, Send, Lock, RotateCcw
 } from 'lucide-react'
 
 const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
@@ -44,12 +44,36 @@ const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
     })
 }
 
+// Historia 13: carga una URL de imagen con reintentos ante conexión lenta
+const cargarImagenConReintentos = async (url, maxIntentos = 3) => {
+    for (let intento = 1; intento <= maxIntentos; intento++) {
+        try {
+            const res = await fetch(`${url}${url.includes('?') ? '&' : '?'}nocache=${Date.now()}`, { cache: 'no-cache' })
+            if (!res.ok) throw new Error(`HTTP ${res.status}`)
+            const blob = await res.blob()
+            return URL.createObjectURL(blob)
+        } catch (err) {
+            if (intento === maxIntentos) throw err
+            await new Promise(r => setTimeout(r, 1000 * intento)) // backoff: 1s, 2s
+        }
+    }
+}
+
+// Historia 13: verifica que una URL de imagen cargue correctamente en el navegador
+const verificarImagenCargada = (url) =>
+    new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Tiempo de espera agotado al verificar la imagen guardada. Verifica tu conexión.')), 13000)
+        const img = new window.Image()
+        img.onload = () => { clearTimeout(timeout); resolve() }
+        img.onerror = () => { clearTimeout(timeout); reject(new Error('La imagen no pudo cargarse tras guardar. Verifica tu conexión e intenta de nuevo.')) }
+        img.src = `${url}?verify=${Date.now()}`
+    })
+
 export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onClose, onUpdate, modo = 'MIEMBRO' }) {
-    const [enviarCorreoRechazo, setEnviarCorreoRechazo] = useState(false) // Por defecto desactivado
+    const [enviarCorreoRechazo, setEnviarCorreoRechazo] = useState(false)
     const [currentIndex, setCurrentIndex] = useState(0)
     const miembro = listaMiembros[currentIndex]
 
-    // Configuración dinámica según el modo
     const DB_TABLE = modo === 'PARQUEO' ? 'parqueos' : 'miembros'
     const RPC_APROBAR = modo === 'PARQUEO' ? 'aprobar_parqueo' : 'aprobar_miembro'
     const ID_PARAM = modo === 'PARQUEO' ? 'parqueo_id' : 'miembro_id'
@@ -69,6 +93,9 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
     const [editandoFoto, setEditandoFoto] = useState(false)
     const [imgBlobUrl, setImgBlobUrl] = useState(null)
+    // Historia 13: estado de carga de imagen
+    const [imgCargando, setImgCargando] = useState(false)
+    const [imgError, setImgError] = useState(false)
 
     useEffect(() => {
         setFormData({ ...listaMiembros[currentIndex] })
@@ -80,17 +107,21 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     }, [currentIndex, listaMiembros])
 
     useEffect(() => {
+        // Historia 13: prepara la imagen con reintentos ante conexión lenta
         const prepararImagen = async () => {
-            if (miembro?.foto_url) {
-                const urlFuente = miembro.foto_url_final || miembro.foto_url
-                try {
-                    const res = await fetch(urlFuente)
-                    const blob = await res.blob()
-                    const objectUrl = URL.createObjectURL(blob)
-                    setImgBlobUrl(objectUrl)
-                } catch (err) {
-                    setImgBlobUrl(urlFuente)
-                }
+            if (!miembro?.foto_url) return
+            const urlFuente = miembro.foto_url_final || miembro.foto_url
+            setImgCargando(true)
+            setImgError(false)
+            try {
+                const objectUrl = await cargarImagenConReintentos(urlFuente)
+                setImgBlobUrl(objectUrl)
+            } catch {
+                // Si fallan todos los reintentos, muestra la URL directa (fallback)
+                setImgBlobUrl(urlFuente)
+                setImgError(true)
+            } finally {
+                setImgCargando(false)
             }
         }
         prepararImagen()
@@ -109,6 +140,24 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
         }
     }
 
+    // Historia 11: revertir la foto procesada a la original del alumno
+    const handleRevertirFoto = async () => {
+        if (!confirm('¿Revertir a la foto original subida por el alumno? Se perderá la edición actual.')) return
+        setLoading(true)
+        try {
+            await supabase.from(DB_TABLE).update({ foto_url_final: null }).eq('id', miembro.id)
+            // Historia 13: carga la original con reintentos
+            const objectUrl = await cargarImagenConReintentos(miembro.foto_url)
+            setImgBlobUrl(objectUrl)
+            setImgError(false)
+            await onUpdate()
+        } catch (error) {
+            alert('Error al revertir foto: ' + error.message)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const handleSave = async (accion) => {
         setLoading(true)
         try {
@@ -122,11 +171,10 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                     })
                 }
 
-                // 2. GUARDAR EN HISTORIAL (Nuevo paso)
                 const { error: historyError } = await supabase
                     .from('solicitudes_rechazadas')
                     .insert([{
-                        origen: modo, // 'MIEMBRO' o 'PARQUEO'
+                        origen: modo,
                         motivo: motivoRechazo,
                         nombres: formData.nombres,
                         apellidos: formData.apellidos,
@@ -141,21 +189,9 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
 
                 if (historyError) {
                     console.error('Error guardando historial:', historyError)
-                    // No detenemos el proceso, pero logueamos el error
                 }
 
-                // 3. ELIMINAR de la tabla activa
                 await supabase.from(DB_TABLE).delete().eq('id', miembro.id)
-
-                // 4. (Opcional) Borrar foto del bucket
-                // Si quieres guardar la evidencia fotográfica, comenta estas lineas.
-                // Si quieres ahorrar espacio, déjalas descomentadas.
-                /*
-                if (miembro.foto_url) {
-                    const path = miembro.foto_url.split('/').pop().split('?')[0]
-                    await supabase.storage.from('fotos-carnet').remove([path])
-                }
-                */
 
                 onUpdate()
                 if (currentIndex < listaMiembros.length - 1) handleNavegacion('next')
@@ -183,37 +219,38 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                     .upload(fileName, blob, { upsert: true })
 
                 if (uploadError) throw uploadError
+
                 const { data: urlData } = supabase.storage.from('fotos-carnet').getPublicUrl(fileName)
-                updates.foto_url_final = urlData.publicUrl
+                const nuevaUrl = urlData.publicUrl
+
+                // Historia 13: verifica que la imagen se cargó correctamente antes de continuar
+                await verificarImagenCargada(nuevaUrl)
+
+                updates.foto_url_final = nuevaUrl
             }
 
             await supabase.from(DB_TABLE).update(updates).eq('id', miembro.id)
 
-            let aprobo = false
             if (accion === 'APROBAR') {
                 if (miembro.estado !== 'APROBADO' && miembro.estado !== 'IMPRESO') {
                     await supabase.rpc(RPC_APROBAR, { [ID_PARAM]: miembro.id })
-                    aprobo = true
                 }
             }
 
-            await onUpdate() // Refrescar lista
+            await onUpdate()
             setLoading(false)
 
             if (accion === 'APROBAR') {
-                // Si aprobamos, probablemente el item desaparezca de la lista de "Pendientes"
-                // Aplicamos la misma lógica que al eliminar:
                 if (listaMiembros.length > 1) {
                     if (currentIndex >= listaMiembros.length - 1) {
                         setCurrentIndex(prev => Math.max(0, prev - 1))
                     }
-                    // Si no es el último, mantenemos el índice (el siguiente item vendrá a nosotros)
                 } else {
                     onClose()
                 }
             } else {
                 setEditandoFoto(false)
-                alert("Cambios guardados correctamente.")
+                alert('Cambios guardados correctamente.')
             }
 
         } catch (error) {
@@ -225,6 +262,8 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     }
 
     if (!miembro) return null
+
+    const tieneEdicion = !!miembro.foto_url_final
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
@@ -239,12 +278,25 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                 </div>
 
                 <div className="flex flex-col lg:flex-row h-full overflow-hidden">
+                    {/* Panel de imagen */}
                     <div className="w-full lg:w-3/5 bg-gray-900 relative flex flex-col">
                         <div className="flex-1 relative min-h-[400px] flex items-center justify-center">
-                            {editandoFoto ? (
+                            {imgCargando ? (
+                                <div className="flex flex-col items-center gap-3 text-gray-400">
+                                    <Loader2 className="w-10 h-10 animate-spin" />
+                                    <span className="text-sm">Cargando imagen...</span>
+                                </div>
+                            ) : editandoFoto ? (
                                 <Cropper image={imgBlobUrl} crop={crop} zoom={zoom} rotation={rotation} aspect={139 / 166} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} onRotationChange={setRotation} />
                             ) : (
-                                <img src={imgBlobUrl} alt="Foto" className="max-h-full max-w-full object-contain shadow-2xl rounded-lg" crossOrigin="anonymous" />
+                                <div className="relative w-full h-full flex items-center justify-center">
+                                    <img src={imgBlobUrl} alt="Foto" className="max-h-full max-w-full object-contain shadow-2xl rounded-lg" crossOrigin="anonymous" />
+                                    {imgError && (
+                                        <div className="absolute bottom-2 left-0 right-0 mx-auto text-center">
+                                            <span className="text-xs bg-yellow-500 text-white px-3 py-1 rounded-full">Imagen cargada desde URL directa (conexión lenta)</span>
+                                        </div>
+                                    )}
+                                </div>
                             )}
                         </div>
                         <div className="p-4 bg-gray-800 flex justify-between items-center gap-4 border-t border-gray-700">
@@ -256,17 +308,28 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                     </div>
                                     <div className="flex gap-2">
                                         <button onClick={() => setEditandoFoto(false)} className="px-4 py-2 text-gray-300 hover:text-white text-sm">Cancelar</button>
-                                        <button onClick={() => handleSave('GUARDAR')} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-bold">Aplicar</button>
+                                        <button onClick={() => handleSave('GUARDAR')} disabled={loading} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-bold flex items-center gap-2">
+                                            {loading && <Loader2 className="w-3 h-3 animate-spin" />} Aplicar
+                                        </button>
                                     </div>
                                 </>
                             ) : (
-                                <div className="w-full flex justify-center">
-                                    <button onClick={() => setEditandoFoto(true)} className="flex items-center gap-2 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors font-medium text-sm"><Scissors className="w-4 h-4" /> Editar Foto</button>
+                                <div className="w-full flex items-center justify-center gap-3">
+                                    <button onClick={() => setEditandoFoto(true)} className="flex items-center gap-2 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors font-medium text-sm">
+                                        <Scissors className="w-4 h-4" /> Editar Foto
+                                    </button>
+                                    {/* Historia 11: revertir foto solo si existe una edición */}
+                                    {tieneEdicion && (
+                                        <button onClick={handleRevertirFoto} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded-full transition-colors font-medium text-sm" title="Revertir a la foto original del alumno">
+                                            <RotateCcw className="w-4 h-4" /> Revertir original
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
                     </div>
 
+                    {/* Panel de datos */}
                     <div className="w-full lg:w-2/5 p-6 md:p-8 overflow-y-auto bg-white flex flex-col">
                         {modoRechazo ? (
                             <div className="flex-1 flex flex-col animate-in slide-in-from-right-10">
@@ -274,7 +337,6 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
 
                                 <textarea value={motivoRechazo} onChange={(e) => setMotivoRechazo(e.target.value)} className="w-full h-32 p-3 border rounded-lg focus:ring-2 focus:ring-red-500 outline-none text-gray-800 text-sm mb-4" placeholder="Motivo..." />
 
-                                {/* NUEVO CHECKBOX */}
                                 <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer bg-gray-50 p-3 rounded-lg border border-gray-200">
                                     <input
                                         type="checkbox"
@@ -304,7 +366,6 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Documento</label>
                                             <input value={formData.dpi_cui} onChange={e => setFormData({ ...formData, dpi_cui: e.target.value })} className="input-field font-mono bg-gray-50" />
                                         </div>
-                                        {/* SOLO MOSTRAMOS ROL SI ES MIEMBRO */}
                                         {modo === 'MIEMBRO' && (
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Rol</label>
@@ -341,11 +402,11 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                 </div>
                                 <div className="mt-8 space-y-3 pt-6 border-t">
                                     <div className="flex gap-2">
-                                        <button onClick={() => handleSave('GUARDAR')} className="flex-1 py-3 border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 text-sm">Guardar Cambios</button>
+                                        <button onClick={() => handleSave('GUARDAR')} disabled={loading} className="flex-1 py-3 border border-gray-300 text-gray-700 font-bold rounded-lg hover:bg-gray-50 text-sm">Guardar Cambios</button>
                                         <button onClick={() => setModoRechazo(true)} className="px-4 py-3 border border-red-200 text-red-600 font-bold rounded-lg hover:bg-red-50 text-sm">Rechazar</button>
                                     </div>
                                     {miembro.estado !== 'APROBADO' && miembro.estado !== 'IMPRESO' && (
-                                        <button onClick={() => handleSave('APROBAR')} className="w-full flex items-center justify-center gap-2 py-4 bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-800 shadow-lg hover:shadow-blue-500/30 transition-all">
+                                        <button onClick={() => handleSave('APROBAR')} disabled={loading} className="w-full flex items-center justify-center gap-2 py-4 bg-blue-700 text-white font-bold rounded-lg hover:bg-blue-800 shadow-lg hover:shadow-blue-500/30 transition-all">
                                             {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <CheckCircle className="w-5 h-5" />} APROBAR Y SIGUIENTE
                                         </button>
                                     )}

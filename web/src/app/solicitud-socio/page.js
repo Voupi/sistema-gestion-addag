@@ -170,6 +170,7 @@ export default function FormularioSolicitudSocio() {
         } catch (error) {
             console.error(error)
             setMensaje({ tipo: 'error', texto: error.message })
+            window.scrollTo({ top: 0, behavior: 'smooth' })
         } finally { setLoading(false) }
     }
 
