@@ -1,182 +1,211 @@
 import React from 'react';
 import { Document, Page, Text, View, Image, StyleSheet, Svg, Line } from '@react-pdf/renderer';
 
-// --- CONSTANTES DE DISEÑO (RF09/RF10) ---
+// --- MATEMÁTICA EXACTA PARA VERTICAL (CR-80 Portrait) ---
 const MM_TO_PT = 72 / 25.4;
-const CARD_W = 85.6 * MM_TO_PT;   // ≈ 242.65 pt
-const CARD_H = 53.98 * MM_TO_PT;  // ≈ 153.03 pt
-const COLS = 2;
-const ROWS = 4;
-const PAGE_W = 612;  // LETTER width en puntos
-const PAGE_H = 792;  // LETTER height en puntos
+const CARD_W = 53.98 * MM_TO_PT;  // ≈ 153.01 pt (Ancho)
+const CARD_H = 85.6 * MM_TO_PT;   // ≈ 242.64 pt (Alto)
+const COLS = 3; // 3 Columnas
+const ROWS = 3; // 3 Filas = 9 Carnés por página
+const PAGE_W = 612;  // Ancho Carta
+const PAGE_H = 792;  // Alto Carta
 
-// Centrado de la cuadrícula en la página (RF09: zero gap)
+// Centrado absoluto de la cuadrícula en la hoja
 const MARGIN_LEFT = (PAGE_W - COLS * CARD_W) / 2;
 const MARGIN_TOP = (PAGE_H - ROWS * CARD_H) / 2;
 
-// Posiciones de las guías de guillotina (RF10)
-const V_LINES = [
-    MARGIN_LEFT,
-    MARGIN_LEFT + CARD_W,
-    MARGIN_LEFT + 2 * CARD_W,
-];
+// Líneas de Guillotina
+const V_LINES = Array.from({ length: COLS + 1 }, (_, i) => MARGIN_LEFT + i * CARD_W);
 const H_LINES = Array.from({ length: ROWS + 1 }, (_, i) => MARGIN_TOP + i * CARD_H);
+
+// --- PALETA DE COLORES ---
+const c = {
+    primary: '#002855', // Azul Oscuro (texto)
+    accent: '#B91C1C',  // Rojo (para el ID)
+    white: '#FFFFFF',
+    textLight: '#6B7280'
+};
 
 const styles = StyleSheet.create({
     page: {
         backgroundColor: '#FFFFFF',
     },
-    // RF09: cero margen entre carnés
-    cardsWrapper: {
+    // Contenedores del Grid
+    cardsWrapperFront: {
         position: 'absolute',
         top: MARGIN_TOP,
         left: MARGIN_LEFT,
         flexDirection: 'row',
         flexWrap: 'wrap',
         width: COLS * CARD_W,
+        height: ROWS * CARD_H,
+    },
+    cardsWrapperBack: {
+        position: 'absolute',
+        top: MARGIN_TOP,
+        left: MARGIN_LEFT,
+        flexDirection: 'row-reverse', // MAGIA ESPEJO: Alinea de derecha a izquierda
+        flexWrap: 'wrap',
+        width: COLS * CARD_W,
+        height: ROWS * CARD_H,
     },
     cardContainer: {
         width: CARD_W,
         height: CARD_H,
-        // Sin márgenes (RF09: zero gap)
         position: 'relative',
         overflow: 'hidden',
     },
-    // RF10: capa de guías absoluta
+    
+    // El fondo debe ser lo primero que se pinta (queda abajo)
+    bgImageAbsolute: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+    },
+
+    // --- CAPAS FLOTANTES DEL FRENTE ---
+    // 1. Contenedor de la Foto (Centrado arriba)
+    fotoWrapper: {
+        position: 'absolute',
+        top: '32%', // Ajusta este % para subir o bajar la foto respecto al marco blanco del fondo
+        left: 0,
+        width: '100%',
+        alignItems: 'center',
+    },
+    foto: {
+        width: '38mm',  // Tamaño de la foto tipo pasaporte
+        height: '39.6mm', 
+        objectFit: 'cover',
+        borderRadius: 14, // Bordes curvos para que encaje en tu diseño
+        border: '1.5pt solid #FFFFFF' // Borde blanco
+    },
+
+    // 2. Contenedor del Nombre y Rol (Abajo de la foto)
+    textoWrapper: {
+        position: 'absolute',
+        top: '79%', // Ajusta este % para subir o bajar los nombres
+        left: 0,
+        width: '100%',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+    },
+    nombre: {
+        fontSize: 10,
+        fontFamily: 'Helvetica-Bold',
+        color: c.primary,
+        textAlign: 'center',
+        textTransform: 'uppercase',
+        lineHeight: 1.1,
+    },
+    rol: {
+        fontSize: 8,
+        fontFamily: 'Helvetica',
+        color: c.primary,
+        textAlign: 'center',
+        textTransform: 'uppercase',
+        marginTop: 2,
+    },
+
+    // 3. Contenedor del ID (Esquina inferior derecha)
+    idWrapper: {
+        position: 'absolute',
+        bottom: '2%', // Separación del borde inferior
+        right: '5%', // Separación del borde derecho
+        flexDirection: 'row',
+        alignItems: 'baseline',
+    },
+    idLabel: {
+        fontSize: 10,
+        fontFamily: 'Helvetica',
+        color: c.accent,
+        marginRight: 2,
+    },
+    idValor: {
+        fontSize: 10,
+        fontFamily: 'Helvetica-Bold',
+        color: c.accent,
+    },
+
+    // --- CAPAS FLOTANTES DEL REVERSO ---
+    venceWrapper: {
+        position: 'absolute',
+        top: '30%', // Ajusta para que caiga justo bajo el logo trasero
+        left: 0,
+        width: '100%',
+        alignItems: 'center',
+    },
+    venceTexto: {
+        fontSize: 9,
+        fontFamily: 'Helvetica-Bold',
+        color: c.white, // Blanco para resaltar sobre el fondo oscuro
+    },
+
+    // Líneas de Guillotina Globales
     cutLinesLayer: {
         position: 'absolute',
         top: 0,
         left: 0,
-    },
-    // --- ESTILOS FRENTE ---
-    frenteContainer: {
-        width: '100%',
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'row',
-        padding: 5,
-    },
-    datosCol: {
-        width: '65%',
-        paddingRight: 2,
-        fontSize: 9,
-    },
-    fotoCol: {
-        width: '35%',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    foto: {
-        width: '24mm',
-        height: '29mm',
-        objectFit: 'cover',
-    },
-    label: {
-        fontSize: 7,
-        fontFamily: 'Helvetica-Bold',
-        color: '#000080',
-        marginTop: 2,
-    },
-    value: {
-        fontSize: 8,
-        fontFamily: 'Helvetica',
-        marginBottom: 1,
-    },
-    footerFunc: {
-        position: 'absolute',
-        bottom: 5,
-        right: 5,
-        fontSize: 8,
-        fontFamily: 'Helvetica-Bold',
-        textAlign: 'right',
-    },
-    // --- ESTILOS REVERSO ---
-    reversoImage: {
-        width: '100%',
-        height: '100%',
-    },
+    }
 });
 
-// RF10: Guías de guillotina que atraviesan toda la página
+// Componente: Guías de Guillotina
 const CutLines = () => (
-    <Svg
-        style={styles.cutLinesLayer}
-        width={PAGE_W}
-        height={PAGE_H}
-    >
+    <Svg style={styles.cutLinesLayer} width={PAGE_W} height={PAGE_H}>
         {V_LINES.map((x, i) => (
-            <Line
-                key={`v${i}`}
-                x1={x} y1={0}
-                x2={x} y2={PAGE_H}
-                stroke="#AAAAAA"
-                strokeWidth={0.5}
-                strokeDasharray="4 3"
-            />
+            <Line key={`v${i}`} x1={x} y1={0} x2={x} y2={PAGE_H} stroke="#999999" strokeWidth={0.5} strokeDasharray="3 3" />
         ))}
         {H_LINES.map((y, i) => (
-            <Line
-                key={`h${i}`}
-                x1={0} y1={y}
-                x2={PAGE_W} y2={y}
-                stroke="#AAAAAA"
-                strokeWidth={0.5}
-                strokeDasharray="4 3"
-            />
+            <Line key={`h${i}`} x1={0} y1={y} x2={PAGE_W} y2={y} stroke="#999999" strokeWidth={0.5} strokeDasharray="3 3" />
         ))}
     </Svg>
 );
 
-// RF06: fechaExpiracion se recibe como prop
-const CarnetFrontal = ({ miembro, fechaExpiracion }) => (
+// Componente: Cara Frontal
+const CarnetFrontal = ({ miembro, baseUrl }) => (
     <View style={styles.cardContainer}>
-        <View style={styles.frenteContainer}>
-            {/* Columna Datos */}
-            <View style={styles.datosCol}>
-                <Text style={styles.label}>Carné No:</Text>
-                <Text style={styles.value}>{miembro.carnet_numero || 'PENDIENTE'}</Text>
+        {/* 1. FONDO (Siempre de primero) */}
+        <Image src={`${baseUrl}/assets/atleta-frente-bg.png`} style={styles.bgImageAbsolute} />
 
-                <Text style={styles.label}>DPI/CUI:</Text>
-                <Text style={styles.value}>{miembro.dpi_cui}</Text>
-
-                <Text style={styles.label}>Nombres:</Text>
-                <Text style={[styles.value, { fontSize: 7 }]}>{miembro.nombres?.toUpperCase()}</Text>
-
-                <Text style={styles.label}>Apellidos:</Text>
-                <Text style={[styles.value, { fontSize: 7 }]}>{miembro.apellidos?.toUpperCase()}</Text>
-
-                <Text style={styles.label}>Departamento:</Text>
-                <Text style={styles.value}>{miembro.departamento}</Text>
-
-                <Text style={styles.label}>Vence:</Text>
-                <Text style={styles.value}>{fechaExpiracion || `31 de Diciembre de ${new Date().getFullYear()}`}</Text>
-            </View>
-
-            {/* Columna Foto */}
-            <View style={styles.fotoCol}>
-                <Image
-                    src={miembro.foto_url_final || miembro.foto_url}
-                    style={styles.foto}
-                />
-            </View>
+        {/* 2. FOTO */}
+        <View style={styles.fotoWrapper}>
+            <Image src={miembro.foto_url_final || miembro.foto_url} style={styles.foto} />
         </View>
 
-        {/* Rol en esquina inferior derecha */}
-        <View style={styles.footerFunc}>
-            <Text>Función: {miembro.rol?.toUpperCase()}</Text>
+        {/* 3. NOMBRES Y ROL */}
+        <View style={styles.textoWrapper}>
+            <Text style={styles.nombre}>{miembro.nombres}</Text>
+            <Text style={styles.nombre}>{miembro.apellidos}</Text>
+            <Text style={styles.rol}>{miembro.rol}</Text>
+        </View>
+
+        {/* 4. CÓDIGO */}
+        <View style={styles.idWrapper}>
+            <Text style={styles.idLabel}>ID.</Text>
+            <Text style={styles.idValor}>{miembro.carnet_numero || 'PENDIENTE'}</Text>
         </View>
     </View>
 );
 
-const CarnetReverso = ({ baseUrl }) => (
+// Componente: Reverso
+const CarnetReverso = ({ baseUrl, fechaExpiracion }) => (
     <View style={styles.cardContainer}>
-        <Image src={`${baseUrl}/assets/portada_carnet_tamaño_carne.png`} style={styles.reversoImage} />
+        {/* 1. FONDO REVERSO */}
+        <Image src={`${baseUrl}/assets/atleta-atras-bg.png`} style={styles.bgImageAbsolute} />
+        
+        {/* 2. TEXTO VENCE */}
+        <View style={styles.venceWrapper}>
+            <Text style={styles.venceTexto}>
+                {fechaExpiracion ? fechaExpiracion.toUpperCase() : '31/DIC/2026'}
+            </Text>
+        </View>
     </View>
 );
 
-// RF06: recibe fechaExpiracion como prop
+// Documento Principal
 export const CarnetDocument = ({ miembros, baseUrl, fechaExpiracion }) => {
-    const itemsPorPagina = COLS * ROWS; // 8
+    const itemsPorPagina = COLS * ROWS; // 9
     const paginas = [];
 
     for (let i = 0; i < miembros.length; i += itemsPorPagina) {
@@ -189,25 +218,28 @@ export const CarnetDocument = ({ miembros, baseUrl, fechaExpiracion }) => {
                 <React.Fragment key={index}>
                     {/* PÁGINA IMPAR: FRENTES */}
                     <Page size="LETTER" style={styles.page}>
-                        {/* RF09: cuadrícula sin márgenes, centrada en página */}
-                        <View style={styles.cardsWrapper}>
+                        <View style={styles.cardsWrapperFront}>
                             {grupo.map((miembro) => (
                                 <CarnetFrontal
                                     key={miembro.id}
                                     miembro={miembro}
-                                    fechaExpiracion={fechaExpiracion}
+                                    baseUrl={baseUrl}
                                 />
                             ))}
                         </View>
-                        {/* RF10: guías de corte sobre la cuadrícula */}
                         <CutLines />
                     </Page>
 
-                    {/* PÁGINA PAR: REVERSOS */}
+                    {/* PÁGINA PAR: REVERSOS (ESPEJO) */}
                     <Page size="LETTER" style={styles.page}>
-                        <View style={styles.cardsWrapper}>
+                        <View style={styles.cardsWrapperBack}>
                             {grupo.map((_, i) => (
-                                <CarnetReverso key={i} baseUrl={baseUrl} />
+                                // React usa el índice 'i' para dibujar los reversos en orden inverso visualmente
+                                <CarnetReverso 
+                                    key={i} 
+                                    baseUrl={baseUrl} 
+                                    fechaExpiracion={fechaExpiracion}
+                                />
                             ))}
                         </View>
                         <CutLines />

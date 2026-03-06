@@ -294,7 +294,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                     <span className="text-sm">Cargando imagen...</span>
                                 </div>
                             ) : editandoFoto ? (
-                                <Cropper image={imgBlobUrl} crop={crop} zoom={zoom} rotation={rotation} aspect={139 / 166} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} onRotationChange={setRotation} />
+                                <Cropper image={imgBlobUrl} crop={crop} zoom={zoom} rotation={rotation} aspect={232 / 242} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} onRotationChange={setRotation} />
                             ) : (
                                 <div className="relative w-full h-full flex items-center justify-center">
                                     <img src={imgBlobUrl} alt="Foto" className="max-h-full max-w-full object-contain shadow-2xl rounded-lg" crossOrigin="anonymous" />
@@ -378,10 +378,9 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Rol</label>
                                                 <select value={formData.rol || 'ATLETA'} onChange={e => setFormData({ ...formData, rol: e.target.value })} className="input-field bg-white cursor-pointer">
                                                     <option value="ATLETA">ATLETA</option>
-                                                    <option value="ENTRENADOR">ENTRENADOR</option>
                                                     <option value="DIRECTIVO">DIRECTIVO</option>
-                                                    <option value="COLABORADOR">COLABORADOR</option>
-                                                    <option value="ARBITRO">ARBITRO</option>
+                                                    <option value="ENTRENADOR">ENTRENADOR</option>
+                                                    <option value="STAFF">STAFF</option>
                                                 </select>
                                             </div>
                                         )}
