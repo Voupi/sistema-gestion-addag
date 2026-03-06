@@ -20,8 +20,8 @@ const H_LINES = Array.from({ length: ROWS + 1 }, (_, i) => MARGIN_TOP + i * CARD
 
 // --- PALETA DE COLORES ---
 const c = {
-    primary: '#002855', // Azul Oscuro (texto)
-    accent: '#B91C1C',  // Rojo (para el ID)
+    primary: '#002855',
+    accent: '#B91C1C',
     white: '#FFFFFF',
     textLight: '#6B7280'
 };
@@ -30,22 +30,11 @@ const styles = StyleSheet.create({
     page: {
         backgroundColor: '#FFFFFF',
     },
-    // Contenedores del Grid
-    cardsWrapperFront: {
+    // Contenedor principal que envuelve todo (Sin FlexWrap)
+    cardsWrapper: {
         position: 'absolute',
         top: MARGIN_TOP,
         left: MARGIN_LEFT,
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        width: COLS * CARD_W,
-        height: ROWS * CARD_H,
-    },
-    cardsWrapperBack: {
-        position: 'absolute',
-        top: MARGIN_TOP,
-        left: MARGIN_LEFT,
-        flexDirection: 'row-reverse', // MAGIA ESPEJO: Alinea de derecha a izquierda
-        flexWrap: 'wrap',
         width: COLS * CARD_W,
         height: ROWS * CARD_H,
     },
@@ -56,7 +45,6 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     
-    // El fondo debe ser lo primero que se pinta (queda abajo)
     bgImageAbsolute: {
         position: 'absolute',
         top: 0,
@@ -66,26 +54,22 @@ const styles = StyleSheet.create({
     },
 
     // --- CAPAS FLOTANTES DEL FRENTE ---
-    // 1. Contenedor de la Foto (Centrado arriba)
     fotoWrapper: {
         position: 'absolute',
-        top: '32%', // Ajusta este % para subir o bajar la foto respecto al marco blanco del fondo
+        top: '32%', 
         left: 0,
         width: '100%',
         alignItems: 'center',
     },
     foto: {
-        width: '38mm',  // Tamaño de la foto tipo pasaporte
+        width: '38mm',  
         height: '39.6mm', 
         objectFit: 'cover',
-        borderRadius: 14, // Bordes curvos para que encaje en tu diseño
-        border: '1.5pt solid #FFFFFF' // Borde blanco
+        borderRadius: 14, 
     },
-
-    // 2. Contenedor del Nombre y Rol (Abajo de la foto)
     textoWrapper: {
         position: 'absolute',
-        top: '79%', // Ajusta este % para subir o bajar los nombres
+        top: '79%', 
         left: 0,
         width: '100%',
         alignItems: 'center',
@@ -107,12 +91,10 @@ const styles = StyleSheet.create({
         textTransform: 'uppercase',
         marginTop: 2,
     },
-
-    // 3. Contenedor del ID (Esquina inferior derecha)
     idWrapper: {
         position: 'absolute',
-        bottom: '2%', // Separación del borde inferior
-        right: '5%', // Separación del borde derecho
+        bottom: '2%', 
+        right: '5%', 
         flexDirection: 'row',
         alignItems: 'baseline',
     },
@@ -131,7 +113,7 @@ const styles = StyleSheet.create({
     // --- CAPAS FLOTANTES DEL REVERSO ---
     venceWrapper: {
         position: 'absolute',
-        top: '30%', // Ajusta para que caiga justo bajo el logo trasero
+        top: '30%', 
         left: 0,
         width: '100%',
         alignItems: 'center',
@@ -139,10 +121,9 @@ const styles = StyleSheet.create({
     venceTexto: {
         fontSize: 9,
         fontFamily: 'Helvetica-Bold',
-        color: c.white, // Blanco para resaltar sobre el fondo oscuro
+        color: c.white, 
     },
 
-    // Líneas de Guillotina Globales
     cutLinesLayer: {
         position: 'absolute',
         top: 0,
@@ -150,7 +131,6 @@ const styles = StyleSheet.create({
     }
 });
 
-// Componente: Guías de Guillotina
 const CutLines = () => (
     <Svg style={styles.cutLinesLayer} width={PAGE_W} height={PAGE_H}>
         {V_LINES.map((x, i) => (
@@ -162,25 +142,17 @@ const CutLines = () => (
     </Svg>
 );
 
-// Componente: Cara Frontal
 const CarnetFrontal = ({ miembro, baseUrl }) => (
     <View style={styles.cardContainer}>
-        {/* 1. FONDO (Siempre de primero) */}
         <Image src={`${baseUrl}/assets/atleta-frente-bg.png`} style={styles.bgImageAbsolute} />
-
-        {/* 2. FOTO */}
         <View style={styles.fotoWrapper}>
             <Image src={miembro.foto_url_final || miembro.foto_url} style={styles.foto} />
         </View>
-
-        {/* 3. NOMBRES Y ROL */}
         <View style={styles.textoWrapper}>
             <Text style={styles.nombre}>{miembro.nombres}</Text>
             <Text style={styles.nombre}>{miembro.apellidos}</Text>
             <Text style={styles.rol}>{miembro.rol}</Text>
         </View>
-
-        {/* 4. CÓDIGO */}
         <View style={styles.idWrapper}>
             <Text style={styles.idLabel}>ID.</Text>
             <Text style={styles.idValor}>{miembro.carnet_numero || 'PENDIENTE'}</Text>
@@ -188,13 +160,9 @@ const CarnetFrontal = ({ miembro, baseUrl }) => (
     </View>
 );
 
-// Componente: Reverso
 const CarnetReverso = ({ baseUrl, fechaExpiracion }) => (
     <View style={styles.cardContainer}>
-        {/* 1. FONDO REVERSO */}
         <Image src={`${baseUrl}/assets/atleta-atras-bg.png`} style={styles.bgImageAbsolute} />
-        
-        {/* 2. TEXTO VENCE */}
         <View style={styles.venceWrapper}>
             <Text style={styles.venceTexto}>
                 {fechaExpiracion ? fechaExpiracion.toUpperCase() : '31/DIC/2026'}
@@ -203,7 +171,6 @@ const CarnetReverso = ({ baseUrl, fechaExpiracion }) => (
     </View>
 );
 
-// Documento Principal
 export const CarnetDocument = ({ miembros, baseUrl, fechaExpiracion }) => {
     const itemsPorPagina = COLS * ROWS; // 9
     const paginas = [];
@@ -218,29 +185,34 @@ export const CarnetDocument = ({ miembros, baseUrl, fechaExpiracion }) => {
                 <React.Fragment key={index}>
                     {/* PÁGINA IMPAR: FRENTES */}
                     <Page size="LETTER" style={styles.page}>
-                        <View style={styles.cardsWrapperFront}>
-                            {grupo.map((miembro) => (
-                                <CarnetFrontal
-                                    key={miembro.id}
-                                    miembro={miembro}
-                                    baseUrl={baseUrl}
-                                />
-                            ))}
+                        <View style={styles.cardsWrapper}>
+                            {grupo.map((miembro, i) => {
+                                // Lógica de Posicionamiento Absoluto (Fila y Columna)
+                                const row = Math.floor(i / COLS);
+                                const col = i % COLS;
+                                return (
+                                    <View key={miembro.id} style={{ position: 'absolute', left: col * CARD_W, top: row * CARD_H }}>
+                                        <CarnetFrontal miembro={miembro} baseUrl={baseUrl} />
+                                    </View>
+                                )
+                            })}
                         </View>
                         <CutLines />
                     </Page>
 
-                    {/* PÁGINA PAR: REVERSOS (ESPEJO) */}
+                    {/* PÁGINA PAR: REVERSOS (ESPEJO MATEMÁTICO) */}
                     <Page size="LETTER" style={styles.page}>
-                        <View style={styles.cardsWrapperBack}>
-                            {grupo.map((_, i) => (
-                                // React usa el índice 'i' para dibujar los reversos en orden inverso visualmente
-                                <CarnetReverso 
-                                    key={i} 
-                                    baseUrl={baseUrl} 
-                                    fechaExpiracion={fechaExpiracion}
-                                />
-                            ))}
+                        <View style={styles.cardsWrapper}>
+                            {grupo.map((_, i) => {
+                                const row = Math.floor(i / COLS);
+                                // MAGIA ESPEJO: Invierte la columna (Si es Col 0, pasa a Col 2)
+                                const colMirrored = (COLS - 1) - (i % COLS);
+                                return (
+                                    <View key={`back-${i}`} style={{ position: 'absolute', left: colMirrored * CARD_W, top: row * CARD_H }}>
+                                        <CarnetReverso baseUrl={baseUrl} fechaExpiracion={fechaExpiracion} />
+                                    </View>
+                                )
+                            })}
                         </View>
                         <CutLines />
                     </Page>
