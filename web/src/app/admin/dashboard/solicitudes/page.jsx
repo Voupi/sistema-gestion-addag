@@ -73,11 +73,14 @@ export default function SolicitudesAdminPage() {
 
             // 2. Construir la consulta base
             if (filtroEstado === 'RECHAZADOS_HIST') {
-                let query = supabase.from('solicitudes_rechazadas').select('*, entrenadores(nombre_completo)').eq('origen', 'MIEMBRO')
+                // No usamos join con entrenadores aquí porque solicitudes_rechazadas
+                // no tiene FK definida hacia entrenadores. El entrenador_id existe
+                // para filtrar, pero el nombre se omite en esta vista.
+                let query = supabase.from('solicitudes_rechazadas').select('*').eq('origen', 'MIEMBRO')
 
                 // Si NO soy admin, solo veo a MIS rechazados
                 if (currentProfile && !currentProfile.es_admin) {
-                    query = query.eq('entrenador_id', currentProfile.id) // Requiere agregar entrenador_id a la tabla historica después
+                    query = query.eq('entrenador_id', currentProfile.id)
                 }
 
                 const result = await query.order('created_at', { ascending: false })
