@@ -3,16 +3,14 @@ import { createClient } from '@supabase/supabase-js'
 import nodemailer from 'nodemailer'
 
 // ─────────────────────────────────────────────────────────────────
-// RF11 - Resumen diario de solicitudes pendientes por entrenador
+// RF11 - Resumen semanal de solicitudes pendientes por entrenador
 //
 // PARA CAMBIAR EL HORARIO: edita "schedule" en /web/vercel.json
-//   Formato cron estándar (UTC): "MINUTO HORA * * *"
-//   Guatemala = UTC-6 → 8:00am GT = 14:00 UTC
+//   Formato cron estándar (UTC): "MINUTO HORA * * DIA_SEMANA"
+//   Guatemala = UTC-6 → 4:00pm GT = 22:00 UTC
+//   DIA_SEMANA: 0=domingo … 5=viernes … 6=sábado
 //
-//   PRUEBAS RÁPIDAS (cambia schedule en vercel.json y redespliega):
-//     "30 15 * * *"  → 9:30am GT  (15:30 UTC)
-//     "0 20 * * *"   → 2:00pm GT  (20:00 UTC)
-//   Una vez confirmado, vuelve a "0 14 * * *" para las 8am GT.
+//   Schedule actual: "0 22 * * 5" → cada viernes a las 4:00pm GT
 //
 // SEGURIDAD: Vercel inyecta automáticamente el header
 //   Authorization: Bearer <CRON_SECRET>

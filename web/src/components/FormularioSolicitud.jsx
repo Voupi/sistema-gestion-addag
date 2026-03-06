@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import Image from 'next/image'
 import { Turnstile } from '@marsidev/react-turnstile'
@@ -32,6 +32,28 @@ const DEPARTAMENTOS_GUATEMALA = [
 
 export default function FormularioSolicitud() {
     const turnstileRef = useRef()
+
+    // Detección de navegador dentro de app (Facebook, Instagram, WhatsApp, etc.)
+    const [esNavegadorApp, setEsNavegadorApp] = useState(false)
+    const [urlActual, setUrlActual] = useState('')
+    useEffect(() => {
+        const ua = navigator.userAgent || ''
+        const esApp = (
+            /FBAN|FBAV|FB_IAB|FBIOS/i.test(ua) ||
+            /Instagram/i.test(ua) ||
+            /WhatsApp/i.test(ua) ||
+            /TikTok/i.test(ua) ||
+            /Twitter/i.test(ua) ||
+            /LinkedInApp/i.test(ua) ||
+            /Snapchat/i.test(ua) ||
+            /Line\//i.test(ua) ||
+            (/Android/i.test(ua) && /wv\b/i.test(ua) && /Version\/\d/i.test(ua))
+        )
+        if (esApp) {
+            setEsNavegadorApp(true)
+            setUrlActual(window.location.href)
+        }
+    }, [])
     // Estados del formulario
     const [formData, setFormData] = useState({
         email: '',
@@ -225,6 +247,35 @@ export default function FormularioSolicitud() {
 
     return (
         <div className="w-full max-w-4xl mx-auto p-4 animate-in fade-in duration-500 font-sans relative">
+
+            {/* BARRERA: navegador dentro de app (Facebook, Instagram, WhatsApp…) */}
+            {esNavegadorApp && (
+                <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-[#002855] p-6 text-center">
+                    <div className="max-w-sm w-full bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-5">
+                        <div className="w-16 h-16 rounded-full bg-orange-100 flex items-center justify-center">
+                            <AlertCircle className="w-9 h-9 text-orange-500" />
+                        </div>
+                        <h2 className="text-xl font-bold text-gray-900 leading-tight">
+                            Abre este formulario en tu navegador
+                        </h2>
+                        <p className="text-sm text-gray-600">
+                            Este formulario <strong>no funciona correctamente</strong> dentro de aplicaciones
+                            como Facebook, Instagram o WhatsApp, porque no permiten subir archivos.
+                        </p>
+                        <div className="w-full bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-left">
+                            <p className="text-xs text-gray-500 mb-1 font-semibold uppercase tracking-wide">Cómo abrir:</p>
+                            <ol className="text-sm text-gray-700 space-y-1 list-decimal list-inside">
+                                <li>Toca los <strong>tres puntos</strong> (⋮) o el ícono de compartir</li>
+                                <li>Selecciona <strong>"Abrir en Chrome"</strong> o <strong>"Abrir en Safari"</strong></li>
+                            </ol>
+                        </div>
+                        <div className="w-full bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 break-all">
+                            <p className="text-xs text-blue-500 font-semibold mb-1">O copia el siguiente enlace:</p>
+                            <p className="text-xs text-blue-800 font-mono leading-relaxed">{urlActual}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* MODAL DE ÉXITO */}
             {showModalExito && (
