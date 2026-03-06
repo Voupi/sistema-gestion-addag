@@ -83,7 +83,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
         if (idx !== -1) setCurrentIndex(idx)
     }, [miembroInicial, listaMiembros])
 
-    const [formData, setFormData] = useState({ ...miembro })
+    const [formData, setFormData] = useState({ ...miembro, rol: miembro.rol || 'ATLETA' })
     const [loading, setLoading] = useState(false)
     const [modoRechazo, setModoRechazo] = useState(false)
     const [motivoRechazo, setMotivoRechazo] = useState('')
@@ -98,7 +98,8 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     const [imgError, setImgError] = useState(false)
 
     useEffect(() => {
-        setFormData({ ...listaMiembros[currentIndex] })
+        const m = listaMiembros[currentIndex]
+        setFormData({ ...m, rol: m.rol || 'ATLETA' })
         setRotation(0)
         setZoom(1)
         setCrop({ x: 0, y: 0 })

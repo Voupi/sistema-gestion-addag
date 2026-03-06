@@ -12,18 +12,13 @@ export default function PrintPage() {
     const [data, setData] = useState({ miembros: [], baseUrl: '', ready: false })
 
     // RF06: Fecha de vencimiento global guardada en localStorage
-    const [fechaExpiracion, setFechaExpiracion] = useState(defaultFecha)
-    const [inputFecha, setInputFecha] = useState(defaultFecha)
+    const [fechaExpiracion, setFechaExpiracion] = useState(() =>
+        (typeof window !== 'undefined' && localStorage.getItem(LS_KEY)) || defaultFecha
+    )
+    const [inputFecha, setInputFecha] = useState(() =>
+        (typeof window !== 'undefined' && localStorage.getItem(LS_KEY)) || defaultFecha
+    )
     const [fechaGuardada, setFechaGuardada] = useState(false)
-
-    // Cargar la fecha guardada al montar
-    useEffect(() => {
-        const saved = localStorage.getItem(LS_KEY)
-        if (saved) {
-            setFechaExpiracion(saved)
-            setInputFecha(saved)
-        }
-    }, [])
 
     const handleGuardarFecha = () => {
         const trimmed = inputFecha.trim()

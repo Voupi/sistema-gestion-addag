@@ -165,7 +165,7 @@ const CarnetReverso = ({ baseUrl, fechaExpiracion }) => (
         <Image src={`${baseUrl}/assets/atleta-atras-bg.png`} style={styles.bgImageAbsolute} />
         <View style={styles.venceWrapper}>
             <Text style={styles.venceTexto}>
-                {fechaExpiracion ? fechaExpiracion.toUpperCase() : '31/DIC/2026'}
+                {fechaExpiracion ? fechaExpiracion.toUpperCase() : `31/DIC/${new Date().getFullYear()}`}
             </Text>
         </View>
     </View>

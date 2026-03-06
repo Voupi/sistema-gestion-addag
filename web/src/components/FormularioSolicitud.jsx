@@ -190,27 +190,17 @@ export default function FormularioSolicitud() {
                 if (insertError.code === '23505') throw new Error('Este Documento ya está registrado.')
                 throw new Error(insertError.message)
             }
-            // --- BLOQUE DE DEBUG TEMPORAL ---
+            // Enviar correo de confirmación (no bloquea si falla)
             try {
-                console.log("Intentando enviar correo...") // Log en navegador
-                const resultadoCorreo = await enviarCorreoConfirmacion({
+                await enviarCorreoConfirmacion({
                     emailDestino: formData.email,
                     nombre: `${formData.nombres} ${formData.apellidos}`,
                     dpi: formData.dpi_cui,
                     telefono: formData.telefono
                 })
-
-                if (!resultadoCorreo.success) {
-                    alert("ERROR DE CORREO: " + resultadoCorreo.error) // Alerta visible
-                    console.error("Error detallado:", resultadoCorreo.error)
-                } else {
-                    console.log("Correo enviado con ID:", resultadoCorreo.id)
-                }
-
-            } catch (mailError) {
-                alert("ERROR CRÍTICO CORREO: " + mailError.message)
+            } catch {
+                // El correo es no-bloqueante; la solicitud ya fue registrada exitosamente
             }
-            // ------------------------------------
 
             // ÉXITO: Limpiar y mostrar Modal
             setFormData({
