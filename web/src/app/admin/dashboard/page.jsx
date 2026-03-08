@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabaseClient'
 import {
@@ -52,6 +53,7 @@ function getProximoViernes() {
 }
 
 export default function DashboardHome() {
+    const router = useRouter()
     const [stats, setStats] = useState({
         pendientes: 0,
         aprobados: 0,
@@ -63,8 +65,24 @@ export default function DashboardHome() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        const cargarStats = async () => {
+        const init = async () => {
             try {
+                // Verificar rol: si no es admin, redirigir a solicitudes
+                const { data: { session } } = await supabase.auth.getSession()
+                if (!session) return
+
+                const { data: perfil } = await supabase
+                    .from('entrenadores')
+                    .select('es_admin')
+                    .eq('email', session.user.email)
+                    .single()
+
+                if (!perfil?.es_admin) {
+                    router.replace('/admin/dashboard/solicitudes')
+                    return
+                }
+
+                // Solo admins cargan las stats
                 const [
                     resPendientes, resAprobados, resTotal, resImpresos,
                     resParkPend, resParkAprov
@@ -90,8 +108,8 @@ export default function DashboardHome() {
                 setLoading(false)
             }
         }
-        cargarStats()
-    }, [])
+        init()
+    }, [router])
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">

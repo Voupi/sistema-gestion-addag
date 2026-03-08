@@ -68,7 +68,8 @@ export default function AdminDashboardLayout({ children }) {
                 </div>
 
                 <nav className="flex-1 px-4 py-6 space-y-2">
-                    {/* ENLACE RESUMEN: Usamos comparación exacta (===) */}
+                    {/* ENLACE RESUMEN: Solo visible para administradores */}
+                    {esAdmin && (
                     <Link href="/admin/dashboard" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname === '/admin/dashboard'
                         ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
                         : 'hover:bg-blue-800/50 text-blue-100'
@@ -76,6 +77,7 @@ export default function AdminDashboardLayout({ children }) {
                         <LayoutDashboard className="w-5 h-5" />
                         <span>Resumen</span>
                     </Link>
+                    )}
 
                     {/* ENLACE SOLICITUDES: Usamos includes */}
                     <Link href="/admin/dashboard/solicitudes" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname.includes('/solicitudes')

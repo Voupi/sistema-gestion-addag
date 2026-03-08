@@ -119,6 +119,15 @@ export default function SolicitudesAdminPage() {
 
     useEffect(() => { fetchMiembros() }, [filtroEstado, verSoloMias])
 
+    // Resetear pestaña si el perfil carga y el no-admin está en una pestaña no permitida
+    useEffect(() => {
+        if (!userProfile || userProfile.es_admin) return
+        const tabsPermitidas = ['TODOS', 'PENDIENTE']
+        if (!tabsPermitidas.includes(filtroEstado)) {
+            setFiltroEstado('PENDIENTE')
+        }
+    }, [userProfile])
+
     // --- ACCIONES INDIVIDUALES ---
     const handleReimprimir = async (id) => {
         if (!confirm('¿Agregar a cola de impresión nuevamente?')) return
@@ -237,7 +246,13 @@ export default function SolicitudesAdminPage() {
         return m.nombres?.toLowerCase().includes(term) || m.dpi_cui?.toLowerCase().includes(term)
     })
 
-    const currentTabInfo = TABS.find(t => t.id === filtroEstado)
+    // Tabs permitidas según rol: no-admins solo pueden ver TODOS y PENDIENTE
+    const TABS_NO_ADMIN = ['TODOS', 'PENDIENTE']
+    const tabsVisibles = (!userProfile || userProfile.es_admin)
+        ? TABS
+        : TABS.filter(t => TABS_NO_ADMIN.includes(t.id))
+
+    const currentTabInfo = tabsVisibles.find(t => t.id === filtroEstado)
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 font-sans">
@@ -269,7 +284,7 @@ export default function SolicitudesAdminPage() {
 
             <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 space-y-4">
                     <div className="flex bg-gray-100 p-1 rounded-lg overflow-x-auto">
-                        {TABS.map((tab) => (
+                        {tabsVisibles.map((tab) => (
                             <button key={tab.id} onClick={() => setFiltroEstado(tab.id)} className={`px-4 py-2 rounded-md text-xs font-bold whitespace-nowrap transition-all ${filtroEstado === tab.id ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
                                 {tab.label}
                             </button>
