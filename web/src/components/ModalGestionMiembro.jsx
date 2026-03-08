@@ -71,7 +71,10 @@ const verificarImagenCargada = (url) =>
 
 export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onClose, onUpdate, modo = 'MIEMBRO' }) {
     const [enviarCorreoRechazo, setEnviarCorreoRechazo] = useState(false)
-    const [currentIndex, setCurrentIndex] = useState(0)
+    const [currentIndex, setCurrentIndex] = useState(() => {
+        const idx = listaMiembros.findIndex(m => m.id === miembroInicial.id)
+        return idx !== -1 ? idx : 0
+    })
     const miembro = listaMiembros[currentIndex]
 
     const DB_TABLE = modo === 'PARQUEO' ? 'parqueos' : 'miembros'
@@ -382,6 +385,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                                     <option value="DIRECTIVO">DIRECTIVO</option>
                                                     <option value="ENTRENADOR">ENTRENADOR</option>
                                                     <option value="STAFF">STAFF</option>
+                                                    <option value="PADRE_FAMILIA">PADRE DE FAMILIA</option>
                                                 </select>
                                             </div>
                                         )}

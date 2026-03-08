@@ -1,0 +1,1 @@
+ALTER TYPE rol_atleta ADD VALUE 'PADRE_FAMILIA';
