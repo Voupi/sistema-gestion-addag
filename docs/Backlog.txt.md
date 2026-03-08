@@ -14,9 +14,19 @@ Este documento detalla las historias de usuario y requerimientos técnicos para 
 8. **Optimización de Corte:** Como **Encargado de Producción**, quiero que el PDF generado tenga los carnés pegados (espacio cero) y guías de corte largas, para reducir la cantidad de cortes de guillotina necesarios.
 9. Notificación de Pendientes: Como Entrenador, quiero recibir un correo electrónico diario de resumen solo si tengo solicitudes pendientes, para recordarme que debo revisarlas antes del fin de semana de impresión.
 10. Persistencia de Datos: Como Asociación, quiero que los datos de los carnés oficiales persistan año con año para llevar un registro histórico de quiénes han sido miembros de la ADDAG.
-11. Gestión de Imagenes: Como Aprobador, quiero poder, editar la foto del alumno y sus datos personales, y también en caso me equivocara al modificar la foto, tener la opción de poder revertirla a la original.
-12. En la fase 3. de Proceso, quiero tener la opción de marcar un checkbox que indique si deseo enviar o no el correo de notificación al alumno, para tener control sobre la comunicación. Y que esté esté predeterminantemente desactivado para evitar envíos accidentales. Tanto en el módulo de carnets de parqueo como en el módulo de carnets de asociados.
-13. Cuando haya un lentitud del internet del sistema, en la modificación de imágenes, quiero que el sistema verifique que la imagen editada se haya guardado correctamente antes de mostrarla en el modal, para evitar mostrar una imagen rota o desactualizada al usuario.
+RF11 - Gestión de Imágenes: Como Aprobador, quiero editar/recortar la foto del usuario y tener un botón de "Revertir" a la original si me equivoco, asegurando la integridad de la imagen base.
+
+RF12 - Comunicación Controlada: En todas las etapas (aprobación/rechazo/entrega), quiero un checkbox de "Enviar Correo" (desactivado por defecto) para decidir cuándo y qué notificar al usuario, evitando accidentes.
+
+RF13 - Estabilidad Visual: Cuando haya red lenta, el sistema debe confirmar que la imagen editada se subió correctamente a Supabase antes de refrescar el modal, evitando mostrar imágenes rotas.
+
+RF14 - Resumen Semanal: Como Entrenador, quiero recibir un correo semanal automático a las 8:00 AM (GT) solo si tengo alumnos pendientes, para no llenar mi bandeja de entrada.
+
+RF15 - Función de Generación de PDF: Como Administrador solamente yo tendré acceso a la función de generación de PDF, para mantener el control sobre la producción de carnés. Los que no sean administradores no podrán ver ni ejecutar esta función. El botón de imprimir lote solo estará visible para los administradores tanto en el módulo de carnets de parqueo como el de carnet de asociado.
+
+RF17 - Optimización de Impresión: El PDF final debe estar optimizado para guillotina (espacio cero entre carnés, guías de corte punteadas) y mostrar los datos en formato vertical profesional.
+
+RF18 - Solo los administradores podrán ver el módulo de parqueos, los entrenadores no tendrán acceso a ese módulo, solo al de carnets de asociados.
 ---
 
 ## ⚙️ Requerimientos Funcionales (Especificaciones Técnicas)

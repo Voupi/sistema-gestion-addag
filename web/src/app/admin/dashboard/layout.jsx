@@ -12,6 +12,7 @@ export default function AdminDashboardLayout({ children }) {
     const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [user, setUser] = useState(null)
+    const [esAdmin, setEsAdmin] = useState(false)
     const pathname = usePathname()
 
     useEffect(() => {
@@ -20,11 +21,20 @@ export default function AdminDashboardLayout({ children }) {
             const { data: { session }, error } = await supabase.auth.getSession()
 
             if (error || !session) {
-                // Si no hay sesión, patear al login
+                // Limpiar cookie del middleware y redirigir al login
+                document.cookie = 'addag_auth=; path=/; max-age=0'
                 router.replace('/admin/login')
             } else {
-                // Si hay sesión, permitir acceso
                 setUser(session.user)
+
+                // Obtener perfil del entrenador para saber si es admin
+                const { data: perfil } = await supabase
+                    .from('entrenadores')
+                    .select('es_admin')
+                    .eq('email', session.user.email)
+                    .single()
+
+                setEsAdmin(perfil?.es_admin === true)
                 setLoading(false)
             }
         }
@@ -33,6 +43,8 @@ export default function AdminDashboardLayout({ children }) {
     }, [router])
 
     const handleLogout = async () => {
+        // Limpiar cookie del middleware antes de cerrar sesión
+        document.cookie = 'addag_auth=; path=/; max-age=0'
         await supabase.auth.signOut()
         router.replace('/admin/login')
     }
@@ -73,7 +85,8 @@ export default function AdminDashboardLayout({ children }) {
                         <FileText className="w-5 h-5" />
                         <span>Solicitudes</span>
                     </Link>
-                    {/* ENLACE PARQUEOS */}
+                    {/* ENLACE PARQUEOS - Solo visible para administradores (RF18) */}
+                    {esAdmin && (
                     <Link href="/admin/dashboard/parqueos" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname.includes('/parqueos')
                             ? 'bg-blue-800 text-white font-medium shadow-sm border border-blue-700'
                             : 'hover:bg-blue-800/50 text-blue-100'
@@ -81,6 +94,7 @@ export default function AdminDashboardLayout({ children }) {
                         <Car className="w-5 h-5" />
                         <span>Parqueos</span>
                     </Link>
+                    )}
                     {/* ENLACE MIEMBROS 
                     COMENTADO POR AHORA
                     <Link href="/admin/dashboard/miembros" className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname.includes('/miembros')
@@ -100,7 +114,7 @@ export default function AdminDashboardLayout({ children }) {
                         </div>
                         <div className="overflow-hidden">
                             <p className="text-sm font-medium truncate">{user?.email}</p>
-                            <p className="text-xs text-blue-300">Administrador</p>
+                            <p className="text-xs text-blue-300">{esAdmin ? 'Administrador' : 'Entrenador'}</p>
                         </div>
                     </div>
                     <button

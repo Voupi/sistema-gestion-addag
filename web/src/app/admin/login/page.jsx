@@ -17,6 +17,8 @@ export default function AdminLogin() {
         const checkSession = async () => {
             const { data: { session } } = await supabase.auth.getSession()
             if (session) {
+                // Asegurar que la cookie del middleware esté activa
+                document.cookie = 'addag_auth=1; path=/; SameSite=Lax; max-age=604800'
                 router.replace('/admin/dashboard')
             }
         }
@@ -35,6 +37,9 @@ export default function AdminLogin() {
             })
 
             if (error) throw error
+
+            // Establecer cookie de sesión para el middleware de rutas
+            document.cookie = 'addag_auth=1; path=/; SameSite=Lax; max-age=604800'
 
             // Login exitoso
             router.replace('/admin/dashboard')

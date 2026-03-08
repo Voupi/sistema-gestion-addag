@@ -283,7 +283,8 @@ export default function SolicitudesAdminPage() {
 
                     <div className="flex flex-col xl:flex-row gap-4 justify-between items-center pt-2 border-t border-gray-100">
                         <div className="flex gap-2">
-                            {filtroEstado === 'EN_COLA' && (
+                            {/* RF15: Botón de impresión solo visible para administradores */}
+                            {filtroEstado === 'EN_COLA' && userProfile?.es_admin && (
                                 <button onClick={handlePrintClick} className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md animate-in zoom-in">
                                     <Printer className="w-5 h-5" /> IMPRIMIR LOTE ({miembrosFiltrados.length})
                                 </button>

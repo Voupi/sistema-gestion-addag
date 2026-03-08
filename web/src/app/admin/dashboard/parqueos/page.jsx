@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabaseClient'
 import {
     Search, Loader2, RefreshCw, UserCheck, Printer,
     CheckCircle, RotateCcw, XCircle, Car,
-    Scissors, PackageCheck, Info
+    Scissors, PackageCheck, Info, ShieldAlert
 } from 'lucide-react'
 import ModalGestionMiembro from '@/components/ModalGestionMiembro'
 import { notificarImpresion } from '@/actions/notificarImpresion'
@@ -36,6 +37,7 @@ const TABS = [
 ]
 
 export default function ParqueosAdminPage() {
+    const router = useRouter()
     const [miembros, setMiembros] = useState([])
     const [loading, setLoading] = useState(true)
     const [filtroEstado, setFiltroEstado] = useState('TODOS')
@@ -43,6 +45,8 @@ export default function ParqueosAdminPage() {
     const [miembroSeleccionado, setMiembroSeleccionado] = useState(null)
     const [showConfirmPrint, setShowConfirmPrint] = useState(false)
     const [isPrinting, setIsPrinting] = useState(false)
+    const [userProfile, setUserProfile] = useState(null)
+    const [authChecked, setAuthChecked] = useState(false)
     // Historia 12: checkbox correo al finalizar fase EN_PROCESO (desactivado por defecto)
     const [enviarCorreoFinalizacion, setEnviarCorreoFinalizacion] = useState(false)
 
@@ -86,10 +90,28 @@ export default function ParqueosAdminPage() {
         finally { setLoading(false) }
     }
 
+    // RF18: Verificar sesión y rol de administrador al montar
+    useEffect(() => {
+        const checkAuth = async () => {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) return
+
+            const { data: perfil } = await supabase
+                .from('entrenadores')
+                .select('*')
+                .eq('email', user.email)
+                .single()
+
+            setUserProfile(perfil)
+            setAuthChecked(true)
+        }
+        checkAuth()
+    }, [])
+
     // Efecto para recargar cuando cambias de pestaña
     useEffect(() => {
         fetchMiembros()
-    }, [filtroEstado]) // <--- AGREGAMOS DEPENDENCIA filtroEstado
+    }, [filtroEstado])
 
     useEffect(() => { fetchMiembros() }, [])
 
@@ -215,6 +237,20 @@ export default function ParqueosAdminPage() {
 
     const currentTabInfo = TABS.find(t => t.id === filtroEstado)
 
+    // RF18: Bloquear acceso a no-administradores (solo mostrar después del check de auth)
+    if (authChecked && !userProfile?.es_admin) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center">
+                <ShieldAlert className="w-16 h-16 text-red-400 mb-4" />
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Acceso Restringido</h2>
+                <p className="text-gray-500 max-w-sm">
+                    El módulo de Parqueos es exclusivo para administradores.
+                    Solo los entrenadores con rol de administrador pueden acceder.
+                </p>
+            </div>
+        )
+    }
+
     return (
         <div className="space-y-6 animate-in fade-in duration-500 font-sans">
             <div className="flex justify-between items-center">
@@ -245,7 +281,8 @@ export default function ParqueosAdminPage() {
 
                 <div className="flex flex-col xl:flex-row gap-4 justify-between items-center pt-2 border-t border-gray-100">
                     <div className="flex gap-2">
-                        {filtroEstado === 'EN_COLA' && (
+                        {/* RF15: Botón de impresión solo visible para administradores */}
+                        {filtroEstado === 'EN_COLA' && userProfile?.es_admin && (
                             <button onClick={handlePrintClick} className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md animate-in zoom-in">
                                 <Printer className="w-5 h-5" /> IMPRIMIR LOTE ({miembrosFiltrados.length})
                             </button>
