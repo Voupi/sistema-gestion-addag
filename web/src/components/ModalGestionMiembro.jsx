@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
-import { ROL_DEFECTO } from '@/lib/constants'
+import { ROL_DEFECTO, ROLES_DISPONIBLES } from '@/lib/constants'
 import Cropper from 'react-easy-crop'
 import { rechazarSolicitud } from '@/actions/rechazarSolicitud'
 import {
@@ -530,11 +530,9 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Rol</label>
                                                 <select value={formData.rol || ROL_DEFECTO} onChange={e => setFormData({ ...formData, rol: e.target.value })} className="input-field bg-white cursor-pointer">
-                                                    <option value="ATLETA ASOCIADO">ATLETA ASOCIADO</option>
-                                                    <option value="DIRECTIVO">DIRECTIVO</option>
-                                                    <option value="ENTRENADOR">ENTRENADOR</option>
-                                                    <option value="STAFF">STAFF</option>
-                                                    <option value="PADRE_FAMILIA">PADRE DE FAMILIA</option>
+                                                    {ROLES_DISPONIBLES.map(rol => (
+                                                        <option key={rol} value={rol}>{rol}</option>
+                                                    ))}
                                                 </select>
                                             </div>
                                         )}
