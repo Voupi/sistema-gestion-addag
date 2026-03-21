@@ -37,7 +37,7 @@ const TABS = [
 ]
 
 export default function SolicitudesAdminPage() {
-    const [verSoloMias, setVerSoloMias] = useState(true)
+    const [verSoloMias, setVerSoloMias] = useState(!true)
     const [miembros, setMiembros] = useState([])
     const [loading, setLoading] = useState(true)
     const [filtroEstado, setFiltroEstado] = useState('PENDIENTE')
