@@ -24,3 +24,191 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ===== RESPONSIVE OPTIMIZATIONS FOR MOBILE/ANDROID ===== */
+
+/* Mejorar touch targets en móvil - mínimo 44x44px según Material Design */
+@media (max-width: 768px) {
+  button,
+  a,
+  input[type="checkbox"],
+  input[type="radio"],
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Aumentar padding en botones pequeños */
+  button:not(.no-mobile-padding) {
+    padding: 0.75rem 1rem !important;
+  }
+
+  /* Mejorar tamaño de fuentes para legibilidad en móvil */
+  body {
+    font-size: 16px; /* Previene zoom automático en iOS */
+  }
+
+  /* Inputs más grandes y táctiles */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="password"],
+  input[type="number"],
+  textarea,
+  select {
+    font-size: 16px !important; /* Previene zoom en iOS */
+    padding: 0.75rem !important;
+  }
+
+  /* Tablas con scroll horizontal */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Modal - Altura completa en móvil */
+  .modal-container {
+    max-height: 100vh !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
+  }
+
+  /* Cards con mejor espaciado */
+  .card-mobile {
+    margin: 0.5rem !important;
+    padding: 1rem !important;
+  }
+
+  /* Mejoras de navegación para pestañas */
+  .tab-navigation {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+
+  .tab-navigation::-webkit-scrollbar {
+    display: none; /* Chrome/Safari */
+  }
+
+  /* Espaciado mejorado para listas */
+  .list-item-mobile {
+    padding: 1rem 0.75rem !important;
+  }
+
+  /* Botones flotantes sticky en móvil */
+  .sticky-mobile-actions {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 1rem;
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+    z-index: 40;
+  }
+}
+
+/* Pantallas muy pequeñas (smartphones en vertical) */
+@media (max-width: 640px) {
+  /* Ocultar contenido secundario en pantallas muy pequeñas */
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  /* Texto más compacto pero legible */
+  h1 {
+    font-size: 1.5rem !important;
+  }
+
+  h2 {
+    font-size: 1.25rem !important;
+  }
+
+  h3 {
+    font-size: 1.125rem !important;
+  }
+
+  /* Reducir padding en containers principales */
+  .container-mobile-sm {
+    padding-left: 0.75rem !important;
+    padding-right: 0.75rem !important;
+  }
+
+  /* Grid responsive - todo a una columna en móvil pequeño */
+  .grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Formularios - campos full width */
+  .form-field-mobile {
+    width: 100% !important;
+  }
+
+  /* Botones full width en móvil pequeño */
+  .button-mobile-full {
+    width: 100% !important;
+  }
+
+  /* Navegación de pestañas más compacta */
+  .tab-button-mobile {
+    font-size: 0.75rem !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+}
+
+/* ===== MEJORAS DE ACCESIBILIDAD Y UX ===== */
+
+/* Transiciones suaves para todos los elementos interactivos */
+button,
+a,
+input,
+select,
+textarea {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Feedback visual mejorado en touch */
+@media (hover: none) and (pointer: coarse) {
+  button:active,
+  a:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+}
+
+/* Safe area para dispositivos con notch */
+@supports (padding: env(safe-area-inset-top)) {
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Indicador de carga mejorado en móvil */
+@media (max-width: 768px) {
+  .loading-spinner {
+    width: 3rem !important;
+    height: 3rem !important;
+  }
+}
+
+/* Mejorar contraste para textos pequeños */
+.text-xs,
+.text-sm {
+  font-weight: 500;
+}
+
+/* Estados de focus mejorados para accesibilidad */
+*:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Ocultar outline en click pero mantener en keyboard navigation */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+

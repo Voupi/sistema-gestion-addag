@@ -288,7 +288,7 @@ export default function ParqueosAdminPage() {
                             </button>
                         )}
 
-                        {(filtroEstado === 'IMPRESO' || filtroEstado === 'EN_PROCESO' || filtroEstado === 'LISTO') && (
+                        {(filtroEstado === 'IMPRESO' || filtroEstado === 'EN_PROCESO' || filtroEstado === 'LISTO') && userProfile?.es_admin && (
                             <button onClick={handleAccionMasiva} className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg font-bold shadow-md animate-in zoom-in transition-all ${filtroEstado === 'IMPRESO' ? 'bg-orange-600 hover:bg-orange-700' :
                                 filtroEstado === 'EN_PROCESO' ? 'bg-teal-600 hover:bg-teal-700' :
                                     'bg-gray-700 hover:bg-gray-800'
@@ -297,8 +297,8 @@ export default function ParqueosAdminPage() {
                                 {filtroEstado === 'IMPRESO' ? 'INICIAR PROCESO' : filtroEstado === 'EN_PROCESO' ? 'FINALIZAR' : 'ENTREGAR TODOS'} ({miembrosFiltrados.length})
                             </button>
                         )}
-                        {/* Historia 12: checkbox correo al finalizar - solo visible en fase EN_PROCESO */}
-                        {filtroEstado === 'EN_PROCESO' && (
+                        {/* Historia 12: checkbox correo al finalizar - solo visible en fase EN_PROCESO y solo para admins */}
+                        {filtroEstado === 'EN_PROCESO' && userProfile?.es_admin && (
                             <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer bg-teal-50 border border-teal-200 px-3 py-2 rounded-lg select-none">
                                 <input
                                     type="checkbox"
@@ -364,17 +364,18 @@ export default function ParqueosAdminPage() {
                                                     </button>
                                                 ) : (
                                                     <>
-                                                        {m.estado === 'IMPRESO' && (
+                                                        {/* Botones de avanzar estado - solo para admins */}
+                                                        {userProfile?.es_admin && m.estado === 'IMPRESO' && (
                                                             <button onClick={() => avanzarEstadoIndividual(m.id, 'EN_PROCESO')} className="btn-action bg-orange-50 text-orange-700 border-orange-200" title="Pasar a Corte">
                                                                 <Scissors className="w-4 h-4" /> En Proceso
                                                             </button>
                                                         )}
-                                                        {m.estado === 'EN_PROCESO' && (
+                                                        {userProfile?.es_admin && m.estado === 'EN_PROCESO' && (
                                                             <button onClick={() => handleMarcarListo(m)} className="btn-action bg-teal-50 text-teal-700 border-teal-200" title="Finalizar">
                                                                 <PackageCheck className="w-4 h-4" /> ¡Listo!
                                                             </button>
                                                         )}
-                                                        {m.estado === 'LISTO' && (
+                                                        {userProfile?.es_admin && m.estado === 'LISTO' && (
                                                             <button onClick={() => handleMarcarEntregado(m.id)} className="btn-action bg-gray-100 text-gray-700 border-gray-300" title="Entregar">
                                                                 <UserCheck className="w-4 h-4" /> Entregar
                                                             </button>
@@ -382,10 +383,11 @@ export default function ParqueosAdminPage() {
 
                                                         <button onClick={() => setMiembroSeleccionado(m)} className="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 text-xs font-medium">Ver</button>
 
-                                                        {(m.estado === 'ENTREGADO' || m.estado === 'LISTO' || m.estado === 'IMPRESO') && (
+                                                        {/* Botones de reimprimir y sacar de cola - solo para admins */}
+                                                        {userProfile?.es_admin && (m.estado === 'ENTREGADO' || m.estado === 'LISTO' || m.estado === 'IMPRESO') && (
                                                             <button onClick={() => handleReimprimir(m.id)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded" title="Reimprimir"><RotateCcw className="w-4 h-4" /></button>
                                                         )}
-                                                        {(m.estado === 'APROBADO' || m.estado === 'REIMPRESION') && (
+                                                        {userProfile?.es_admin && (m.estado === 'APROBADO' || m.estado === 'REIMPRESION') && (
                                                             <button onClick={() => handleSacarDeCola(m)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Sacar"><XCircle className="w-4 h-4" /></button>
                                                         )}
                                                     </>

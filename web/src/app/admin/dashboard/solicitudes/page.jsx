@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import {
     Search, Loader2, RefreshCw, UserCheck, Printer,
-    CheckCircle, RotateCcw, XCircle, Users, // Icono Users en vez de Car
-    Scissors, PackageCheck, Info, Ban
+    CheckCircle, RotateCcw, XCircle, Users,
+    Scissors, PackageCheck, Info, Ban, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import ModalGestionMiembro from '@/components/ModalGestionMiembro'
 import { notificarImpresion } from '@/actions/notificarImpresion'
@@ -48,6 +48,9 @@ export default function SolicitudesAdminPage() {
     const [userProfile, setUserProfile] = useState(null)
     // Historia 12: checkbox correo al finalizar fase EN_PROCESO (desactivado por defecto)
     const [enviarCorreoFinalizacion, setEnviarCorreoFinalizacion] = useState(false)
+    // Nuevas funcionalidades de selección múltiple
+    const [seleccionados, setSeleccionados] = useState([])
+    const [seleccionarTodos, setSeleccionarTodos] = useState(false)
 
     // Modificamos el Fetch para que sea inteligente
     const fetchMiembros = async () => {
@@ -119,6 +122,21 @@ export default function SolicitudesAdminPage() {
 
     useEffect(() => { fetchMiembros() }, [filtroEstado, verSoloMias])
 
+    // Limpiar selecciones al cambiar de pestaña
+    useEffect(() => {
+        setSeleccionados([])
+        setSeleccionarTodos(false)
+    }, [filtroEstado])
+
+    // Manejar selección de todos
+    useEffect(() => {
+        if (seleccionarTodos) {
+            setSeleccionados(miembrosFiltrados.map(m => m.id))
+        } else {
+            setSeleccionados([])
+        }
+    }, [seleccionarTodos])
+
     // Resetear pestaña si el perfil carga y el no-admin está en una pestaña no permitida
     useEffect(() => {
         if (!userProfile || userProfile.es_admin) return
@@ -168,6 +186,56 @@ export default function SolicitudesAdminPage() {
         if (!confirm('¿Confirmar entrega?')) return
         await supabase.from('miembros').update({ estado: 'ENTREGADO' }).eq('id', id)
         fetchMiembros()
+    }
+
+    // --- SELECCIÓN MÚLTIPLE ---
+    const toggleSeleccion = (id) => {
+        setSeleccionados(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        )
+    }
+
+    const moverSeleccionados = async (direccion) => {
+        if (seleccionados.length === 0) return alert('Selecciona al menos una solicitud.')
+
+        // Determinar estado destino según la fase actual y dirección
+        let nuevoEstado = ''
+        const faseActual = filtroEstado
+
+        if (direccion === 'siguiente') {
+            if (faseActual === 'EN_COLA') nuevoEstado = 'IMPRESO'
+            else if (faseActual === 'IMPRESO') nuevoEstado = 'EN_PROCESO'
+            else if (faseActual === 'EN_PROCESO') nuevoEstado = 'LISTO'
+            else if (faseActual === 'LISTO') nuevoEstado = 'ENTREGADO'
+            else return alert('No hay fase siguiente.')
+        } else if (direccion === 'anterior') {
+            if (faseActual === 'IMPRESO') nuevoEstado = 'APROBADO'
+            else if (faseActual === 'EN_PROCESO') nuevoEstado = 'IMPRESO'
+            else if (faseActual === 'LISTO') nuevoEstado = 'EN_PROCESO'
+            else if (faseActual === 'ENTREGADO') nuevoEstado = 'LISTO'
+            else return alert('No hay fase anterior.')
+        }
+
+        if (!confirm(`¿Mover ${seleccionados.length} solicitud(es) a ${nuevoEstado}?`)) return
+
+        setIsPrinting(true)
+        try {
+            const { error } = await supabase
+                .from('miembros')
+                .update({ estado: nuevoEstado })
+                .in('id', seleccionados)
+
+            if (error) throw error
+            alert(`${seleccionados.length} solicitud(es) movida(s) a ${nuevoEstado}`)
+            setSeleccionados([])
+            setSeleccionarTodos(false)
+            fetchMiembros()
+        } catch (error) {
+            console.error(error)
+            alert('Error al mover solicitudes: ' + error.message)
+        } finally {
+            setIsPrinting(false)
+        }
     }
 
     // --- ACCIONES MASIVAS ---
@@ -297,7 +365,7 @@ export default function SolicitudesAdminPage() {
                     </div>
 
                     <div className="flex flex-col xl:flex-row gap-4 justify-between items-center pt-2 border-t border-gray-100">
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
                             {/* RF15: Botón de impresión solo visible para administradores */}
                             {filtroEstado === 'EN_COLA' && userProfile?.es_admin && (
                                 <button onClick={handlePrintClick} className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 shadow-md animate-in zoom-in">
@@ -305,7 +373,7 @@ export default function SolicitudesAdminPage() {
                                 </button>
                             )}
 
-                            {(filtroEstado === 'IMPRESO' || filtroEstado === 'EN_PROCESO' || filtroEstado === 'LISTO') && (
+                            {(filtroEstado === 'IMPRESO' || filtroEstado === 'EN_PROCESO' || filtroEstado === 'LISTO') && userProfile?.es_admin && (
                                 <button onClick={handleAccionMasiva} className={`flex items-center gap-2 px-4 py-2 text-white rounded-lg font-bold shadow-md animate-in zoom-in transition-all ${filtroEstado === 'IMPRESO' ? 'bg-orange-600 hover:bg-orange-700' :
                                     filtroEstado === 'EN_PROCESO' ? 'bg-indigo-600 hover:bg-indigo-700' :
                                         'bg-gray-700 hover:bg-gray-800'
@@ -314,8 +382,25 @@ export default function SolicitudesAdminPage() {
                                     {filtroEstado === 'IMPRESO' ? 'INICIAR PROCESO' : filtroEstado === 'EN_PROCESO' ? 'FINALIZAR' : 'ENTREGAR TODOS'} ({miembrosFiltrados.length})
                                 </button>
                             )}
-                            {/* Historia 12: checkbox correo al finalizar - solo visible en fase EN_PROCESO */}
-                            {filtroEstado === 'EN_PROCESO' && (
+
+                            {/* Botones de mover seleccionados - visible en fases procesables */}
+                            {userProfile?.es_admin && seleccionados.length > 0 && ['EN_COLA', 'IMPRESO', 'EN_PROCESO', 'LISTO', 'ENTREGADO'].includes(filtroEstado) && (
+                                <>
+                                    {['IMPRESO', 'EN_PROCESO', 'LISTO', 'ENTREGADO'].includes(filtroEstado) && (
+                                        <button onClick={() => moverSeleccionados('anterior')} className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg font-bold hover:bg-gray-600 shadow-md">
+                                            <ChevronLeft className="w-4 h-4" /> Fase Anterior ({seleccionados.length})
+                                        </button>
+                                    )}
+                                    {['EN_COLA', 'IMPRESO', 'EN_PROCESO', 'LISTO'].includes(filtroEstado) && (
+                                        <button onClick={() => moverSeleccionados('siguiente')} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 shadow-md">
+                                            Fase Siguiente ({seleccionados.length}) <ChevronRight className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </>
+                            )}
+
+                            {/* Historia 12: checkbox correo al finalizar - solo visible en fase EN_PROCESO y solo para admins */}
+                            {filtroEstado === 'EN_PROCESO' && userProfile?.es_admin && (
                                 <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer bg-indigo-50 border border-indigo-200 px-3 py-2 rounded-lg select-none">
                                     <input
                                         type="checkbox"
@@ -340,17 +425,44 @@ export default function SolicitudesAdminPage() {
                         <table className="w-full text-sm text-left">
                             <thead className="bg-gray-50 text-gray-500 font-medium border-b border-gray-200">
                                 <tr>
+                                    {/* Columna de checkbox - solo en fases procesables y solo para admins */}
+                                    {userProfile?.es_admin && ['EN_COLA', 'IMPRESO', 'EN_PROCESO', 'LISTO', 'ENTREGADO'].includes(filtroEstado) && (
+                                        <th className="px-4 py-4 w-12">
+                                            <input
+                                                type="checkbox"
+                                                checked={seleccionarTodos}
+                                                onChange={(e) => setSeleccionarTodos(e.target.checked)}
+                                                className="w-4 h-4 accent-blue-600 cursor-pointer"
+                                                title="Seleccionar todas"
+                                            />
+                                        </th>
+                                    )}
                                     <th className="px-6 py-4">Miembro</th>
-                                    <th className="px-6 py-4">Rol</th> {/* COLUMNA EXTRA PARA MIEMBROS */}
+                                    <th className="px-6 py-4">Rol</th>
                                     <th className="px-6 py-4">Documento</th>
+                                    {/* Columna de fecha de aprobación - solo en cola y fases posteriores */}
+                                    {['EN_COLA', 'IMPRESO', 'EN_PROCESO', 'LISTO', 'ENTREGADO'].includes(filtroEstado) && (
+                                        <th className="px-6 py-4">Fecha Aprobación</th>
+                                    )}
                                     <th className="px-6 py-4">Estado</th>
                                     <th className="px-6 py-4 text-right">Acción</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {loading ? (<tr><td colSpan="5" className="p-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-500" /></td></tr>) :
+                                {loading ? (<tr><td colSpan="7" className="p-8 text-center"><Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-500" /></td></tr>) :
                                     miembrosFiltrados.map((m) => (
-                                        <tr key={m.id} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={m.id} className={`hover:bg-gray-50 transition-colors ${seleccionados.includes(m.id) ? 'bg-blue-50' : ''}`}>
+                                            {/* Checkbox individual */}
+                                            {userProfile?.es_admin && ['EN_COLA', 'IMPRESO', 'EN_PROCESO', 'LISTO', 'ENTREGADO'].includes(filtroEstado) && (
+                                                <td className="px-4 py-4">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={seleccionados.includes(m.id)}
+                                                        onChange={() => toggleSeleccion(m.id)}
+                                                        className="w-4 h-4 accent-blue-600 cursor-pointer"
+                                                    />
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-10 h-10 rounded-full bg-gray-100 overflow-hidden border border-gray-200 relative">
@@ -377,6 +489,30 @@ export default function SolicitudesAdminPage() {
                                             {/* CELDA ROL */}
                                             <td className="px-6 py-4 text-xs font-semibold text-blue-700 bg-blue-50 w-fit rounded px-2">{m.rol || 'N/A'}</td>
                                             <td className="px-6 py-4 font-mono text-gray-600">{m.dpi_cui}</td>
+                                            {/* Columna de fecha de aprobación */}
+                                            {['EN_COLA', 'IMPRESO', 'EN_PROCESO', 'LISTO', 'ENTREGADO'].includes(filtroEstado) && (
+                                                <td className="px-6 py-4">
+                                                    {m.fecha_aprobacion ? (
+                                                        <div className="text-xs">
+                                                            <p className="text-gray-700 font-medium">
+                                                                {new Date(m.fecha_aprobacion).toLocaleDateString('es-GT', {
+                                                                    day: '2-digit',
+                                                                    month: '2-digit',
+                                                                    year: 'numeric'
+                                                                })}
+                                                            </p>
+                                                            <p className="text-gray-500 text-[10px]">
+                                                                {new Date(m.fecha_aprobacion).toLocaleTimeString('es-GT', {
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })}
+                                                            </p>
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-xs text-gray-400">-</span>
+                                                    )}
+                                                </td>
+                                            )}
                                             <td className="px-6 py-4">
                                                 <span className={`px-2 py-1 rounded text-[10px] font-bold border ${getStatusColor(m.estado)}`}>{m.estado}</span>
                                                 {m.estado === 'RECHAZADO' && <p className="text-[10px] text-red-600 mt-1 max-w-[150px] truncate">{m.motivo}</p>}
@@ -388,16 +524,18 @@ export default function SolicitudesAdminPage() {
                                                         <button onClick={() => alert(m.motivo)} className="px-3 py-1.5 border border-red-200 text-red-600 bg-red-50 rounded text-xs font-medium">Ver Motivo</button>
                                                     ) : (
                                                         <>
-                                                            {m.estado === 'IMPRESO' && <button onClick={() => avanzarEstadoIndividual(m.id, 'EN_PROCESO')} className="btn-action bg-orange-50 text-orange-700 border-orange-200" title="Pasar a Corte"><Scissors className="w-4 h-4" /></button>}
-                                                            {m.estado === 'EN_PROCESO' && <button onClick={() => handleMarcarListo(m)} className="btn-action bg-indigo-50 text-indigo-700 border-indigo-200" title="Finalizar"><PackageCheck className="w-4 h-4" /></button>}
-                                                            {m.estado === 'LISTO' && <button onClick={() => handleMarcarEntregado(m.id)} className="btn-action bg-gray-100 text-gray-700 border-gray-300" title="Entregar"><UserCheck className="w-4 h-4" /></button>}
+                                                            {/* Botones de avanzar estado - solo para admins */}
+                                                            {userProfile?.es_admin && m.estado === 'IMPRESO' && <button onClick={() => avanzarEstadoIndividual(m.id, 'EN_PROCESO')} className="btn-action bg-orange-50 text-orange-700 border-orange-200" title="Pasar a Corte"><Scissors className="w-4 h-4" /></button>}
+                                                            {userProfile?.es_admin && m.estado === 'EN_PROCESO' && <button onClick={() => handleMarcarListo(m)} className="btn-action bg-indigo-50 text-indigo-700 border-indigo-200" title="Finalizar"><PackageCheck className="w-4 h-4" /></button>}
+                                                            {userProfile?.es_admin && m.estado === 'LISTO' && <button onClick={() => handleMarcarEntregado(m.id)} className="btn-action bg-gray-100 text-gray-700 border-gray-300" title="Entregar"><UserCheck className="w-4 h-4" /></button>}
 
                                                             <button onClick={() => setMiembroSeleccionado(m)} className="px-3 py-1.5 border border-gray-300 rounded hover:bg-gray-50 text-xs font-medium text-gray-700">Ver</button>
 
-                                                            {(m.estado === 'ENTREGADO' || m.estado === 'LISTO' || m.estado === 'IMPRESO') && (
+                                                            {/* Botones de reimprimir y sacar de cola - solo para admins */}
+                                                            {userProfile?.es_admin && (m.estado === 'ENTREGADO' || m.estado === 'LISTO' || m.estado === 'IMPRESO') && (
                                                                 <button onClick={() => handleReimprimir(m.id)} className="p-1.5 text-purple-600 hover:bg-purple-50 rounded" title="Reimprimir"><RotateCcw className="w-4 h-4" /></button>
                                                             )}
-                                                            {(m.estado === 'APROBADO' || m.estado === 'REIMPRESION') && (
+                                                            {userProfile?.es_admin && (m.estado === 'APROBADO' || m.estado === 'REIMPRESION') && (
                                                                 <button onClick={() => handleSacarDeCola(m)} className="p-1.5 text-red-600 hover:bg-red-50 rounded" title="Sacar"><XCircle className="w-4 h-4" /></button>
                                                             )}
                                                         </>

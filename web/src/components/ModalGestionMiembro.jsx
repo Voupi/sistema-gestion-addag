@@ -10,7 +10,102 @@ import {
     Scissors, Ban, Send, Lock, RotateCcw
 } from 'lucide-react'
 
-const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
+// Función para obtener la orientación EXIF de una imagen
+const getExifOrientation = async (imageSrc) => {
+    return new Promise((resolve) => {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.onload = async () => {
+            try {
+                const canvas = document.createElement('canvas')
+                const ctx = canvas.getContext('2d')
+                canvas.width = img.width
+                canvas.height = img.height
+                ctx.drawImage(img, 0, 0)
+
+                // Intentar obtener los datos de la imagen para detectar EXIF
+                const response = await fetch(imageSrc)
+                const blob = await response.blob()
+                const arrayBuffer = await blob.arrayBuffer()
+                const view = new DataView(arrayBuffer)
+
+                // Verificar si es JPEG (0xFFD8)
+                if (view.getUint16(0, false) !== 0xFFD8) {
+                    resolve(1) // No es JPEG, sin EXIF
+                    return
+                }
+
+                // Buscar el marcador de EXIF
+                let offset = 2
+                while (offset < view.byteLength) {
+                    if (view.getUint16(offset + 2, false) <= 8) {
+                        resolve(1)
+                        return
+                    }
+                    const marker = view.getUint16(offset, false)
+                    offset += 2
+
+                    if (marker === 0xFFE1) { // Marcador APP1 (EXIF)
+                        const exifOffset = offset + 2
+                        if (view.getUint32(exifOffset, false) !== 0x45786966) {
+                            resolve(1)
+                            return
+                        }
+
+                        const little = view.getUint16(exifOffset + 6, false) === 0x4949
+                        offset += view.getUint16(offset, false)
+
+                        const tags = view.getUint16(exifOffset + 8 + (little ? 0 : 2), little)
+                        for (let i = 0; i < tags; i++) {
+                            const tagOffset = exifOffset + 10 + (i * 12)
+                            if (view.getUint16(tagOffset, little) === 0x0112) {
+                                resolve(view.getUint16(tagOffset + 8, little))
+                                return
+                            }
+                        }
+                    } else {
+                        offset += view.getUint16(offset, false)
+                    }
+                }
+                resolve(1) // Sin orientación EXIF
+            } catch (err) {
+                console.warn('Error leyendo EXIF:', err)
+                resolve(1) // Por defecto sin rotación
+            }
+        }
+        img.onerror = () => resolve(1)
+        img.src = imageSrc
+    })
+}
+
+// Función para aplicar la corrección EXIF a la imagen
+const applyExifOrientation = (ctx, orientation, width, height) => {
+    switch (orientation) {
+        case 2:
+            ctx.transform(-1, 0, 0, 1, width, 0)
+            break
+        case 3:
+            ctx.transform(-1, 0, 0, -1, width, height)
+            break
+        case 4:
+            ctx.transform(1, 0, 0, -1, 0, height)
+            break
+        case 5:
+            ctx.transform(0, 1, 1, 0, 0, 0)
+            break
+        case 6:
+            ctx.transform(0, 1, -1, 0, height, 0)
+            break
+        case 7:
+            ctx.transform(0, -1, -1, 0, height, width)
+            break
+        case 8:
+            ctx.transform(0, -1, 1, 0, 0, width)
+            break
+    }
+}
+
+const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0, exifOrientation = 1) => {
     const image = new Image()
     const isLocalBlob = imageSrc.startsWith('blob:')
     if (isLocalBlob) {
@@ -22,14 +117,33 @@ const getCroppedImg = async (imageSrc, pixelCrop, rotation = 0) => {
     await new Promise((resolve) => { image.onload = resolve })
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')
-    const maxSize = Math.max(image.width, image.height)
+
+    // Aplicar orientación EXIF antes de cualquier otra transformación
+    let width = image.width
+    let height = image.height
+
+    // Las orientaciones 5, 6, 7 y 8 intercambian ancho y alto
+    if (exifOrientation >= 5 && exifOrientation <= 8) {
+        [width, height] = [height, width]
+    }
+
+    const maxSize = Math.max(width, height)
     const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2))
     canvas.width = safeArea
     canvas.height = safeArea
+
     ctx.translate(safeArea / 2, safeArea / 2)
+
+    // Primero aplicamos la orientación EXIF
+    if (exifOrientation !== 1) {
+        applyExifOrientation(ctx, exifOrientation, width, height)
+    }
+
+    // Luego aplicamos la rotación manual del usuario
     ctx.rotate((rotation * Math.PI) / 180)
+
     ctx.translate(-safeArea / 2, -safeArea / 2)
-    ctx.drawImage(image, safeArea / 2 - image.width * 0.5, safeArea / 2 - image.height * 0.5)
+    ctx.drawImage(image, safeArea / 2 - width * 0.5, safeArea / 2 - height * 0.5)
     const data = ctx.getImageData(
         safeArea / 2 - image.width * 0.5 + pixelCrop.x,
         safeArea / 2 - image.height * 0.5 + pixelCrop.y,
@@ -213,24 +327,57 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
             }
             if (modo === 'MIEMBRO') updates.rol = formData.rol
 
-            if (editandoFoto && croppedAreaPixels) {
-                const blob = await getCroppedImg(imgBlobUrl, croppedAreaPixels, rotation)
-                const prefix = modo === 'PARQUEO' ? 'P_' : ''
-                const fileName = `${prefix}procesada_${miembro.dpi_cui}_${Date.now()}.jpg`
+            // Procesar imagen si se editó manualmente O si se está aprobando (para corregir EXIF)
+            const debeProcesarImagen = editandoFoto && croppedAreaPixels
+            const esAprobacionSinEditar = accion === 'APROBAR' && !editandoFoto && !miembro.foto_url_final
 
-                const { error: uploadError } = await supabase.storage
-                    .from('fotos-carnet')
-                    .upload(fileName, blob, { upsert: true })
+            if (debeProcesarImagen || esAprobacionSinEditar) {
+                let blob
 
-                if (uploadError) throw uploadError
+                if (debeProcesarImagen) {
+                    // Usuario editó manualmente la foto
+                    const exifOrientation = await getExifOrientation(imgBlobUrl)
+                    blob = await getCroppedImg(imgBlobUrl, croppedAreaPixels, rotation, exifOrientation)
+                } else {
+                    // Aprobación sin editar: corregir solo orientación EXIF
+                    const exifOrientation = await getExifOrientation(imgBlobUrl)
 
-                const { data: urlData } = supabase.storage.from('fotos-carnet').getPublicUrl(fileName)
-                const nuevaUrl = urlData.publicUrl
+                    // Solo procesar si tiene orientación EXIF diferente a 1 (normal)
+                    if (exifOrientation !== 1) {
+                        // Crear un crop de toda la imagen
+                        const img = new Image()
+                        img.src = imgBlobUrl
+                        await new Promise(resolve => { img.onload = resolve })
 
-                // Historia 13: verifica que la imagen se cargó correctamente antes de continuar
-                await verificarImagenCargada(nuevaUrl)
+                        const fullCrop = {
+                            x: 0,
+                            y: 0,
+                            width: img.width,
+                            height: img.height
+                        }
 
-                updates.foto_url_final = nuevaUrl
+                        blob = await getCroppedImg(imgBlobUrl, fullCrop, 0, exifOrientation)
+                    }
+                }
+
+                if (blob) {
+                    const prefix = modo === 'PARQUEO' ? 'P_' : ''
+                    const fileName = `${prefix}procesada_${miembro.dpi_cui}_${Date.now()}.jpg`
+
+                    const { error: uploadError } = await supabase.storage
+                        .from('fotos-carnet')
+                        .upload(fileName, blob, { upsert: true })
+
+                    if (uploadError) throw uploadError
+
+                    const { data: urlData } = supabase.storage.from('fotos-carnet').getPublicUrl(fileName)
+                    const nuevaUrl = urlData.publicUrl
+
+                    // Historia 13: verifica que la imagen se cargó correctamente antes de continuar
+                    await verificarImagenCargada(nuevaUrl)
+
+                    updates.foto_url_final = nuevaUrl
+                }
             }
 
             // RF03: registrar quién aprobó y cuándo (solo al aprobar por primera vez)
@@ -277,21 +424,22 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
     const tieneEdicion = !!miembro.foto_url_final
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-6xl max-h-[95vh] flex flex-col overflow-hidden font-sans">
-                <div className="bg-gray-100 px-6 py-3 flex justify-between items-center border-b">
-                    <div className="flex items-center gap-4">
-                        <button onClick={() => handleNavegacion('prev')} disabled={currentIndex === 0} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors text-gray-700"><ChevronLeft className="w-6 h-6" /></button>
-                        <span className="text-sm font-medium text-gray-500">Solicitud {currentIndex + 1} de {listaMiembros.length} ({modo})</span>
-                        <button onClick={() => handleNavegacion('next')} disabled={currentIndex === listaMiembros.length - 1} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors text-gray-700"><ChevronRight className="w-6 h-6" /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-2 sm:p-4 animate-in fade-in">
+            <div className="bg-white rounded-2xl sm:rounded-2xl rounded-t-2xl shadow-2xl w-full max-w-6xl max-h-[100vh] sm:max-h-[95vh] flex flex-col overflow-hidden font-sans modal-container">
+                <div className="bg-gray-100 px-3 sm:px-6 py-2 sm:py-3 flex justify-between items-center border-b">
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <button onClick={() => handleNavegacion('prev')} disabled={currentIndex === 0} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors text-gray-700 touch-target"><ChevronLeft className="w-5 h-5 sm:w-6 sm:h-6" /></button>
+                        <span className="text-xs sm:text-sm font-medium text-gray-500 hidden sm:inline">Solicitud {currentIndex + 1} de {listaMiembros.length} ({modo})</span>
+                        <span className="text-xs font-medium text-gray-500 sm:hidden">{currentIndex + 1}/{listaMiembros.length}</span>
+                        <button onClick={() => handleNavegacion('next')} disabled={currentIndex === listaMiembros.length - 1} className="p-2 rounded-full hover:bg-white disabled:opacity-30 transition-colors text-gray-700 touch-target"><ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" /></button>
                     </div>
-                    <button onClick={onClose} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+                    <button onClick={onClose} className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full transition-colors touch-target"><X className="w-5 h-5 sm:w-6 sm:h-6" /></button>
                 </div>
 
                 <div className="flex flex-col lg:flex-row h-full overflow-hidden">
                     {/* Panel de imagen */}
                     <div className="w-full lg:w-3/5 bg-gray-900 relative flex flex-col">
-                        <div className="flex-1 relative min-h-[400px] flex items-center justify-center">
+                        <div className="flex-1 relative min-h-[250px] sm:min-h-[350px] lg:min-h-[400px] flex items-center justify-center">
                             {imgCargando ? (
                                 <div className="flex flex-col items-center gap-3 text-gray-400">
                                     <Loader2 className="w-10 h-10 animate-spin" />
@@ -310,29 +458,29 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                 </div>
                             )}
                         </div>
-                        <div className="p-4 bg-gray-800 flex justify-between items-center gap-4 border-t border-gray-700">
+                        <div className="p-3 sm:p-4 bg-gray-800 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4 border-t border-gray-700">
                             {editandoFoto ? (
                                 <>
-                                    <div className="flex gap-4 items-center flex-1">
-                                        <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="accent-blue-500 w-full max-w-[200px]" />
-                                        <button onClick={() => setRotation(r => r + 90)} className="text-white hover:text-blue-400"><RotateCw className="w-6 h-6" /></button>
+                                    <div className="flex gap-4 items-center flex-1 w-full sm:w-auto">
+                                        <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(e.target.value)} className="accent-blue-500 w-full sm:max-w-[200px]" />
+                                        <button onClick={() => setRotation(r => r + 90)} className="text-white hover:text-blue-400 touch-target"><RotateCw className="w-6 h-6" /></button>
                                     </div>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => setEditandoFoto(false)} className="px-4 py-2 text-gray-300 hover:text-white text-sm">Cancelar</button>
-                                        <button onClick={() => handleSave('GUARDAR')} disabled={loading} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-bold flex items-center gap-2">
+                                    <div className="flex gap-2 w-full sm:w-auto">
+                                        <button onClick={() => setEditandoFoto(false)} className="flex-1 sm:flex-none px-4 py-2 text-gray-300 hover:text-white text-sm no-mobile-padding">Cancelar</button>
+                                        <button onClick={() => handleSave('GUARDAR')} disabled={loading} className="flex-1 sm:flex-none px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-bold flex items-center justify-center gap-2 no-mobile-padding">
                                             {loading && <Loader2 className="w-3 h-3 animate-spin" />} Aplicar
                                         </button>
                                     </div>
                                 </>
                             ) : (
-                                <div className="w-full flex items-center justify-center gap-3">
-                                    <button onClick={() => setEditandoFoto(true)} className="flex items-center gap-2 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors font-medium text-sm">
+                                <div className="w-full flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3">
+                                    <button onClick={() => setEditandoFoto(true)} className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-full transition-colors font-medium text-sm">
                                         <Scissors className="w-4 h-4" /> Editar Foto
                                     </button>
                                     {/* Historia 11: revertir foto solo si existe una edición */}
                                     {tieneEdicion && (
-                                        <button onClick={handleRevertirFoto} disabled={loading} className="flex items-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded-full transition-colors font-medium text-sm" title="Revertir a la foto original del alumno">
-                                            <RotateCcw className="w-4 h-4" /> Revertir original
+                                        <button onClick={handleRevertirFoto} disabled={loading} className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-amber-700 hover:bg-amber-600 text-white rounded-full transition-colors font-medium text-sm" title="Revertir a la foto original del alumno">
+                                            <RotateCcw className="w-4 h-4" /> <span className="hidden sm:inline">Revertir original</span><span className="sm:hidden">Revertir</span>
                                         </button>
                                     )}
                                 </div>
@@ -341,7 +489,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                     </div>
 
                     {/* Panel de datos */}
-                    <div className="w-full lg:w-2/5 p-6 md:p-8 overflow-y-auto bg-white flex flex-col">
+                    <div className="w-full lg:w-2/5 p-4 sm:p-6 md:p-8 overflow-y-auto bg-white flex flex-col">
                         {modoRechazo ? (
                             <div className="flex-1 flex flex-col animate-in slide-in-from-right-10">
                                 <h3 className="text-xl font-bold text-red-700 mb-4 flex items-center gap-2"><Ban className="w-6 h-6" /> Rechazar</h3>
