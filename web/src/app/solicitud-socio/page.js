@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { ROL_DEFECTO } from '@/lib/constants'
 import Image from 'next/image'
 import { Turnstile } from '@marsidev/react-turnstile'
 import { User, CreditCard, Phone, MapPin, Camera, Loader2, CheckCircle, AlertCircle, Globe, Mail, Users, ShieldCheck } from 'lucide-react'
@@ -86,8 +87,6 @@ export default function FormularioSolicitudSocio() {
         }
     }, [isFormComplete, loading, hasScrolled])
 
-    const rolDefecto = 'ATLETA'
-
     const handleChange = (e) => {
         const { name, value } = e.target
         if (name === 'tipo_documento') {
@@ -164,7 +163,7 @@ export default function FormularioSolicitudSocio() {
                     apellidos: formData.apellidos.trim(), tipo_documento: formData.tipo_documento,
                     dpi_cui: formData.dpi_cui.trim(), fecha_nacimiento: formData.fecha_nacimiento,
                     telefono: formData.telefono.trim(), departamento: formData.departamento,
-                    foto_url: urlData.publicUrl, rol: rolDefecto, entrenador_id: formData.entrenador_id
+                    foto_url: urlData.publicUrl, rol: ROL_DEFECTO, entrenador_id: formData.entrenador_id
                 }])
 
             if (insertError) {

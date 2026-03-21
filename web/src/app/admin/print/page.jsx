@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { ShieldAlert } from 'lucide-react'
 
 const LS_KEY = 'addag_fecha_expiracion'
-const defaultFecha = `31 de Diciembre de ${new Date().getFullYear()}`
+const defaultFecha = `VENCE: 12/${new Date().getFullYear()}`
 
 export default function PrintPage() {
     const router = useRouter()

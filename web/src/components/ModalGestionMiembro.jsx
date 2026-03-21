@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+import { ROL_DEFECTO } from '@/lib/constants'
 import Cropper from 'react-easy-crop'
 import { rechazarSolicitud } from '@/actions/rechazarSolicitud'
 import {
@@ -200,7 +201,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
         if (idx !== -1) setCurrentIndex(idx)
     }, [miembroInicial, listaMiembros])
 
-    const [formData, setFormData] = useState({ ...miembro, rol: miembro.rol || 'ATLETA' })
+    const [formData, setFormData] = useState({ ...miembro, rol: miembro.rol || ROL_DEFECTO })
     const [loading, setLoading] = useState(false)
     const [modoRechazo, setModoRechazo] = useState(false)
     const [motivoRechazo, setMotivoRechazo] = useState('')
@@ -216,7 +217,7 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
 
     useEffect(() => {
         const m = listaMiembros[currentIndex]
-        setFormData({ ...m, rol: m.rol || 'ATLETA' })
+        setFormData({ ...m, rol: m.rol || ROL_DEFECTO })
         setRotation(0)
         setZoom(1)
         setCrop({ x: 0, y: 0 })
@@ -528,8 +529,8 @@ export default function ModalGestionMiembro({ miembroInicial, listaMiembros, onC
                                         {modo === 'MIEMBRO' && (
                                             <div className="space-y-1">
                                                 <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Rol</label>
-                                                <select value={formData.rol || 'ATLETA'} onChange={e => setFormData({ ...formData, rol: e.target.value })} className="input-field bg-white cursor-pointer">
-                                                    <option value="ATLETA">ATLETA</option>
+                                                <select value={formData.rol || ROL_DEFECTO} onChange={e => setFormData({ ...formData, rol: e.target.value })} className="input-field bg-white cursor-pointer">
+                                                    <option value="ATLETA ASOCIADO">ATLETA ASOCIADO</option>
                                                     <option value="DIRECTIVO">DIRECTIVO</option>
                                                     <option value="ENTRENADOR">ENTRENADOR</option>
                                                     <option value="STAFF">STAFF</option>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, Image, StyleSheet, Svg, Line } from '@react-pdf/renderer';
+import { Document, Page, Text, View, Image, StyleSheet, Svg, Line, Font } from '@react-pdf/renderer';
 
 // --- MATEMÁTICA EXACTA PARA VERTICAL (CR-80 Portrait) ---
 const MM_TO_PT = 72 / 25.4;
@@ -76,7 +76,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 10,
     },
     nombre: {
-        fontSize: 10,
         fontFamily: 'Helvetica-Bold',
         color: c.primary,
         textAlign: 'center',
@@ -113,7 +112,7 @@ const styles = StyleSheet.create({
     // --- CAPAS FLOTANTES DEL REVERSO ---
     venceWrapper: {
         position: 'absolute',
-        top: '30%', 
+        top: '35%', 
         left: 0,
         width: '100%',
         alignItems: 'center',
@@ -142,23 +141,62 @@ const CutLines = () => (
     </Svg>
 );
 
-const CarnetFrontal = ({ miembro, baseUrl }) => (
-    <View style={styles.cardContainer}>
-        <Image src={`${baseUrl}/assets/atleta-frente-bg.png`} style={styles.bgImageAbsolute} />
-        <View style={styles.fotoWrapper}>
-            <Image src={miembro.foto_url_final || miembro.foto_url} style={styles.foto} />
+// Función para calcular el fontSize dinámico basado en la longitud del texto
+// Ancho disponible: ~133pt (153pt - 20pt padding)
+// Helvetica-Bold: ~14 chars por línea a fontSize 10, ~15.5 a fontSize 9, ~17 a fontSize 8
+const calcularFontSize = (texto) => {
+    if (!texto) return 10;
+    
+    const longitud = texto.length;
+    
+    // A fontSize 10: máximo ~14-15 caracteres por línea
+    // Si cabe en máximo 2 líneas: 14 * 2 = 28 caracteres
+    if (longitud <= 28) {
+        return 10;
+    }
+    
+    // A fontSize 9: máximo ~16 caracteres por línea
+    // Si cabe en máximo 2 líneas: 16 * 2 = 32 caracteres
+    if (longitud <= 32) {
+        return 9;
+    }
+    
+    // A fontSize 8: máximo ~18 caracteres por línea
+    // Si ocupa 3+ líneas, usar fontSize 8
+    return 8;
+};
+
+const CarnetFrontal = ({ miembro, baseUrl }) => {
+    // 1. Unir nombre y apellidos en una sola cadena
+    const nombreCompleto = `${miembro.nombres || ''} ${miembro.apellidos || ''}`.trim();
+    
+    // 2. Calcular el tamaño de fuente basado en el nombre completo
+    const fontSize = calcularFontSize(nombreCompleto);
+    
+    // 3. Crear un solo objeto de estilo para el nombre completo
+    const estiloNombreCompleto = {
+        ...styles.nombre,
+        fontSize: fontSize,
+    };
+    
+    return (
+        <View style={styles.cardContainer}>
+            <Image src={`${baseUrl}/assets/atleta-frente-bg.png`} style={styles.bgImageAbsolute} />
+            <View style={styles.fotoWrapper}>
+                <Image src={miembro.foto_url_final || miembro.foto_url} style={styles.foto} />
+            </View>
+            <View style={styles.textoWrapper}>
+                {/* 4. Usar un solo Text para que el texto fluya naturalmente */}
+                <Text style={estiloNombreCompleto}>{nombreCompleto}</Text>
+                <Text style={styles.rol}>{miembro.rol}</Text>
+            </View>
+            <View style={styles.idWrapper}>
+                <Text style={styles.idLabel}>ID.</Text>
+                <Text style={styles.idValor}>{miembro.carnet_numero || 'PENDIENTE'}</Text>
+            </View>
         </View>
-        <View style={styles.textoWrapper}>
-            <Text style={styles.nombre}>{miembro.nombres}</Text>
-            <Text style={styles.nombre}>{miembro.apellidos}</Text>
-            <Text style={styles.rol}>{miembro.rol}</Text>
-        </View>
-        <View style={styles.idWrapper}>
-            <Text style={styles.idLabel}>ID.</Text>
-            <Text style={styles.idValor}>{miembro.carnet_numero || 'PENDIENTE'}</Text>
-        </View>
-    </View>
-);
+    );
+};
 
 const CarnetReverso = ({ baseUrl, fechaExpiracion }) => (
     <View style={styles.cardContainer}>
@@ -170,6 +208,10 @@ const CarnetReverso = ({ baseUrl, fechaExpiracion }) => (
         </View>
     </View>
 );
+
+// Desactivar la separación de palabras con guiones en todo el documento
+// Esto hace que las palabras completas se muevan a la siguiente línea si no caben
+Font.registerHyphenationCallback(word => [word]);
 
 export const CarnetDocument = ({ miembros, baseUrl, fechaExpiracion }) => {
     const itemsPorPagina = COLS * ROWS; // 9
